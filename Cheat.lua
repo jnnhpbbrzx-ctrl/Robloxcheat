@@ -1,29 +1,25 @@
 -- =====================================================
--- ROCKET ULTRA v5.1 — ПОЛНЫЙ КОД
--- WINDOWS UI СТИЛЬ + ВСЕ ФУНКЦИИ
--- ТЁМНО-ФИОЛЕТОВАЯ ПАЛИТРА
--- АВТОР: ROCKET (ROCKET WAY)
+-- ROCKET ULTRA v6.0
+-- SERIOUS VERSION - NO EMOJIS, NO GLITCHES
+-- FULLY WORKING WINDOWS UI
 -- =====================================================
 
--- 1. ОСНОВНЫЕ СЕРВИСЫ
+-- SERVICES
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local HttpService = game:GetService("HttpService")
-local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
--- 2. ПРОВЕРКА ПЕРСОНАЖА
+-- CHARACTER CHECK
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- 3. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+-- VARIABLES
 local flying = false
 local flySpeed = 60
 local flyBodyVelocity = nil
@@ -51,32 +47,29 @@ local autoFarm = false
 local autoFarmConnection = nil
 local thirdPerson = false
 local thirdPersonConnection = nil
-local isDragging = false
-local dragStart = nil
-local dragStartPos = nil
-
--- ПЕРЕМЕННЫЕ ДЛЯ ГРАБА
 local grabEnabled = false
 local grabTarget = nil
 local grabConnection = nil
 local grabBodyVelocity = nil
-
--- ПЕРЕМЕННЫЕ ДЛЯ FTAP
 local ftapBoostEnabled = false
 local ftapConnection = nil
+local isDragging = false
+local dragStart = nil
+local dragStartPos = nil
+local minimized = false
 
--- 4. СОЗДАНИЕ GUI В СТИЛЕ WINDOWS
+-- CREATE GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ROCKET_WINDOWS_GUI"
+ScreenGui.Name = "ROCKET_GUI"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- ГЛАВНОЕ ОКНО
+-- MAIN WINDOW
 local MainWindow = Instance.new("Frame")
 MainWindow.Parent = ScreenGui
-MainWindow.Size = UDim2.new(0, 800, 0, 600)
-MainWindow.Position = UDim2.new(0.5, -400, 0.5, -300)
+MainWindow.Size = UDim2.new(0, 780, 0, 580)
+MainWindow.Position = UDim2.new(0.5, -390, 0.5, -290)
 MainWindow.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainWindow.BackgroundTransparency = 0.05
 MainWindow.BorderSizePixel = 2
@@ -84,54 +77,40 @@ MainWindow.BorderColor3 = Color3.fromRGB(130, 50, 200)
 MainWindow.Active = true
 MainWindow.ClipsDescendants = true
 
--- ЗАГОЛОВОК (TOP BAR)
+-- TOP BAR
 local TopBar = Instance.new("Frame")
 TopBar.Parent = MainWindow
 TopBar.Size = UDim2.new(1, 0, 0, 40)
 TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 TopBar.BorderSizePixel = 0
 
--- ИКОНКА
-local WindowIcon = Instance.new("TextLabel")
-WindowIcon.Parent = TopBar
-WindowIcon.Size = UDim2.new(0, 30, 1, 0)
-WindowIcon.BackgroundTransparency = 1
-WindowIcon.Text = "🚀"
-WindowIcon.TextColor3 = Color3.fromRGB(200, 150, 255)
-WindowIcon.TextScaled = true
-WindowIcon.Font = Enum.Font.GothamBold
-
--- НАЗВАНИЕ
 local WindowTitle = Instance.new("TextLabel")
 WindowTitle.Parent = TopBar
-WindowTitle.Size = UDim2.new(1, -120, 1, 0)
-WindowTitle.Position = UDim2.new(0, 35, 0, 0)
+WindowTitle.Size = UDim2.new(1, -90, 1, 0)
+WindowTitle.Position = UDim2.new(0, 10, 0, 0)
 WindowTitle.BackgroundTransparency = 1
-WindowTitle.Text = "ROCKET ULTRA v5.1"
+WindowTitle.Text = "ROCKET ULTRA v6.0"
 WindowTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
 WindowTitle.TextScaled = true
 WindowTitle.Font = Enum.Font.GothamBold
 WindowTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- КНОПКА СВЕРНУТЬ
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Parent = TopBar
 MinimizeBtn.Size = UDim2.new(0, 30, 1, 0)
 MinimizeBtn.Position = UDim2.new(1, -60, 0, 0)
 MinimizeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 MinimizeBtn.BorderSizePixel = 0
-MinimizeBtn.Text = "─"
+MinimizeBtn.Text = "-"
 MinimizeBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
 MinimizeBtn.TextScaled = true
 MinimizeBtn.Font = Enum.Font.GothamBold
-local minimized = false
 MinimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
-    MainWindow.Size = minimized and UDim2.new(0, 800, 0, 40) or UDim2.new(0, 800, 0, 600)
-    MainWindow.Position = minimized and UDim2.new(0.5, -400, 0.1, 0) or UDim2.new(0.5, -400, 0.5, -300)
+    MainWindow.Size = minimized and UDim2.new(0, 780, 0, 40) or UDim2.new(0, 780, 0, 580)
+    MainWindow.Position = minimized and UDim2.new(0.5, -390, 0.1, 0) or UDim2.new(0.5, -390, 0.5, -290)
 end)
 
--- КНОПКА ЗАКРЫТЬ
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = TopBar
 CloseBtn.Size = UDim2.new(0, 30, 1, 0)
@@ -146,7 +125,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- ПЕРЕТАСКИВАНИЕ
+-- DRAG WINDOW
 TopBar.MouseButton1Down:Connect(function(x, y)
     isDragging = true
     dragStart = Vector2.new(x, y)
@@ -171,7 +150,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- КОНТЕЙНЕР
+-- CONTAINER
 local Container = Instance.new("Frame")
 Container.Parent = MainWindow
 Container.Size = UDim2.new(1, 0, 1, -40)
@@ -179,12 +158,10 @@ Container.Position = UDim2.new(0, 0, 0, 40)
 Container.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 Container.BorderSizePixel = 0
 
--- =====================================================
--- 5. БОКОВАЯ ПАНЕЛЬ (SIDEBAR)
--- =====================================================
+-- SIDEBAR
 local Sidebar = Instance.new("Frame")
 Sidebar.Parent = Container
-Sidebar.Size = UDim2.new(0, 140, 1, 0)
+Sidebar.Size = UDim2.new(0, 130, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
 Sidebar.BorderSizePixel = 1
 Sidebar.BorderColor3 = Color3.fromRGB(50, 30, 80)
@@ -195,38 +172,11 @@ TabList.SortOrder = Enum.SortOrder.LayoutOrder
 TabList.Padding = UDim.new(0, 8)
 TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- ФУНКЦИЯ КНОПКИ ВКЛАДКИ
-local function CreateTabButton(text, icon)
-    local btn = Instance.new("TextButton")
-    btn.Parent = Sidebar
-    btn.Size = UDim2.new(0.85, 0, 0, 45)
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
-    btn.Text = icon .. " " .. text
-    btn.TextColor3 = Color3.fromRGB(200, 180, 220)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.TextWrapped = true
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
-        btn.BorderColor3 = Color3.fromRGB(130, 50, 200)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-        btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
-    end)
-    return btn
-end
-
--- =====================================================
--- 6. ОСНОВНАЯ ЗОНА КОНТЕНТА
--- =====================================================
+-- CONTENT AREA
 local ContentArea = Instance.new("ScrollingFrame")
 ContentArea.Parent = Container
-ContentArea.Size = UDim2.new(1, -150, 1, 0)
-ContentArea.Position = UDim2.new(0, 145, 0, 0)
+ContentArea.Size = UDim2.new(1, -140, 1, 0)
+ContentArea.Position = UDim2.new(0, 135, 0, 0)
 ContentArea.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 ContentArea.BorderSizePixel = 0
 ContentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -236,32 +186,29 @@ ContentArea.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 local ContentLayout = Instance.new("UIListLayout")
 ContentLayout.Parent = ContentArea
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ContentLayout.Padding = UDim.new(0, 8)
+ContentLayout.Padding = UDim.new(0, 6)
 ContentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- =====================================================
--- 7. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ UI
--- =====================================================
-
-local function CreateSectionHeader(text)
-    local header = Instance.new("TextLabel")
-    header.Parent = ContentArea
-    header.Size = UDim2.new(0.95, 0, 0, 30)
-    header.BackgroundColor3 = Color3.fromRGB(30, 20, 50)
-    header.BorderSizePixel = 1
-    header.BorderColor3 = Color3.fromRGB(130, 50, 200)
-    header.Text = " " .. text
-    header.TextColor3 = Color3.fromRGB(220, 180, 255)
-    header.TextScaled = true
-    header.Font = Enum.Font.GothamBold
-    header.TextXAlignment = Enum.TextXAlignment.Left
-    return header
+-- UI FUNCTIONS
+local function CreateHeader(text)
+    local h = Instance.new("TextLabel")
+    h.Parent = ContentArea
+    h.Size = UDim2.new(0.95, 0, 0, 28)
+    h.BackgroundColor3 = Color3.fromRGB(30, 20, 50)
+    h.BorderSizePixel = 1
+    h.BorderColor3 = Color3.fromRGB(130, 50, 200)
+    h.Text = " " .. text
+    h.TextColor3 = Color3.fromRGB(220, 180, 255)
+    h.TextScaled = true
+    h.Font = Enum.Font.GothamBold
+    h.TextXAlignment = Enum.TextXAlignment.Left
+    return h
 end
 
 local function CreateButton(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ContentArea
-    btn.Size = UDim2.new(0.95, 0, 0, 36)
+    btn.Size = UDim2.new(0.95, 0, 0, 35)
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     btn.BorderSizePixel = 1
     btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
@@ -284,11 +231,11 @@ end
 local function CreateToggle(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ContentArea
-    btn.Size = UDim2.new(0.95, 0, 0, 36)
+    btn.Size = UDim2.new(0.95, 0, 0, 35)
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     btn.BorderSizePixel = 1
     btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
-    btn.Text = text .. " [◽ OFF]"
+    btn.Text = text .. " [OFF]"
     btn.TextColor3 = Color3.fromRGB(220, 180, 255)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamSemibold
@@ -303,7 +250,7 @@ local function CreateToggle(text, callback)
     end)
     btn.MouseButton1Click:Connect(function()
         state = not state
-        btn.Text = text .. (state and " [✅ ON]" or " [◽ OFF]")
+        btn.Text = text .. (state and " [ON]" or " [OFF]")
         btn.BorderColor3 = state and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 40, 100)
         callback(state)
     end)
@@ -313,7 +260,7 @@ end
 local function CreateTextBox(text, placeholder, callback)
     local box = Instance.new("TextBox")
     box.Parent = ContentArea
-    box.Size = UDim2.new(0.95, 0, 0, 32)
+    box.Size = UDim2.new(0.95, 0, 0, 30)
     box.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     box.BorderSizePixel = 1
     box.BorderColor3 = Color3.fromRGB(60, 40, 100)
@@ -330,70 +277,11 @@ local function CreateTextBox(text, placeholder, callback)
     return box
 end
 
-local function CreateSlider(text, min, max, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = ContentArea
-    frame.Size = UDim2.new(0.95, 0, 0, 50)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    frame.BorderSizePixel = 0
-    
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.BackgroundTransparency = 1
-    label.Text = text .. ": " .. default
-    label.TextColor3 = Color3.fromRGB(200, 180, 220)
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamMedium
-    
-    local slider = Instance.new("TextButton")
-    slider.Parent = frame
-    slider.Size = UDim2.new(1, 0, 0, 20)
-    slider.Position = UDim2.new(0, 0, 0, 25)
-    slider.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
-    slider.BorderSizePixel = 1
-    slider.BorderColor3 = Color3.fromRGB(80, 60, 120)
-    slider.Text = ""
-    
-    local fill = Instance.new("Frame")
-    fill.Parent = slider
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-    fill.BorderSizePixel = 0
-    
-    local value = default
-    local dragging = false
-    
-    slider.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local pos = input.Position.X - slider.AbsolutePosition.X
-            local percent = math.clamp(pos / slider.AbsoluteSize.X, 0, 1)
-            value = min + (max - min) * percent
-            value = math.round(value)
-            fill.Size = UDim2.new(percent, 0, 1, 0)
-            label.Text = text .. ": " .. value
-            callback(value)
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    return frame
-end
-
 -- =====================================================
--- 8. ОСНОВНЫЕ ФУНКЦИИ
+-- CORE FUNCTIONS
 -- =====================================================
 
--- 8.1 FLY
+-- FLY
 local function StartFly()
     if flying then return end
     flying = true
@@ -432,7 +320,7 @@ local function StopFly()
     end
 end
 
--- 8.2 NOCLIP
+-- NOCLIP
 local function ToggleNoclip(state)
     noclip = state
     if noclip then
@@ -461,7 +349,7 @@ local function ToggleNoclip(state)
     end
 end
 
--- 8.3 SPEED HACK
+-- SPEED
 local function ToggleSpeed(state)
     speedHack = state
     if speedHack then
@@ -484,7 +372,7 @@ local function ToggleSpeed(state)
     end
 end
 
--- 8.4 GOD MODE
+-- GOD MODE
 local function ToggleGodMode(state)
     godMode = state
     if godMode then
@@ -521,7 +409,7 @@ local function ToggleGodMode(state)
     end
 end
 
--- 8.5 INFINITE JUMP
+-- INFINITE JUMP
 local function ToggleInfiniteJump(state)
     infiniteJump = state
     if infiniteJump then
@@ -539,7 +427,7 @@ local function ToggleInfiniteJump(state)
     end
 end
 
--- 8.6 ANTI-FALL
+-- ANTI-FALL
 local function ToggleAntiFall(state)
     antiFall = state
     if antiFall then
@@ -559,7 +447,7 @@ local function ToggleAntiFall(state)
     end
 end
 
--- 8.7 ESP
+-- ESP
 local function ToggleESP(state)
     espEnabled = state
     if espEnabled then
@@ -586,7 +474,7 @@ local function ToggleESP(state)
     end
 end
 
--- 8.8 AIMBOT
+-- AIMBOT
 local function ToggleAimbot(state)
     aimbotEnabled = state
     if aimbotEnabled then
@@ -620,7 +508,7 @@ local function ToggleAimbot(state)
     end
 end
 
--- 8.9 FREEZE ALL
+-- FREEZE ALL
 local function ToggleFreezeAll(state)
     freezeAll = state
     if freezeAll then
@@ -642,14 +530,13 @@ local function ToggleFreezeAll(state)
     end
 end
 
--- 8.10 ANTI-KICK
+-- ANTI-KICK
 local function ToggleAntiKick(state)
     antiKick = state
     if antiKick then
         if antiKickConnection then antiKickConnection:Disconnect() end
         antiKickConnection = game:GetService("Players").LocalPlayer:WaitForChild("Kick"):Connect(function()
             if antiKick then
-                print("🛡️ ROCKET: КИК ЗАБЛОКИРОВАН!")
                 wait(0.1)
                 Player.Character = Player.CharacterAdded:Wait()
                 wait(0.2)
@@ -668,7 +555,7 @@ local function ToggleAntiKick(state)
     end
 end
 
--- 8.11 AUTO-FARM
+-- AUTO-FARM
 local function ToggleAutoFarm(state)
     autoFarm = state
     if autoFarm then
@@ -708,7 +595,7 @@ local function ToggleAutoFarm(state)
     end
 end
 
--- 8.12 THIRD PERSON
+-- THIRD PERSON
 local function ToggleThirdPerson(state)
     thirdPerson = state
     if thirdPerson then
@@ -732,10 +619,8 @@ local function ToggleThirdPerson(state)
 end
 
 -- =====================================================
--- 9. СПЕЦИАЛЬНЫЕ ФУНКЦИИ (ГРАБ + FTAP)
+-- GRAB FUNCTION
 -- =====================================================
-
--- 9.1 ГРАБИТЬ ИГРОКОВ
 local function GrabPlayer(targetName)
     local target = nil
     for _, plr in pairs(Players:GetPlayers()) do
@@ -746,12 +631,12 @@ local function GrabPlayer(targetName)
     end
     
     if not target or target == Player then
-        print("❌ ROCKET: Игрок не найден или это вы")
+        print("ROCKET: Target not found")
         return
     end
     
     if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
-        print("❌ ROCKET: У игрока нет персонажа")
+        print("ROCKET: Target has no character")
         return
     end
     
@@ -759,7 +644,7 @@ local function GrabPlayer(targetName)
     grabEnabled = not grabEnabled
     
     if grabEnabled then
-        print("🔄 ROCKET: Захват игрока " .. target.Name .. " активирован")
+        print("ROCKET: Grabbing " .. target.Name)
         
         local targetRoot = target.Character.HumanoidRootPart
         grabBodyVelocity = Instance.new("BodyVelocity")
@@ -800,7 +685,7 @@ local function GrabPlayer(targetName)
             end
         end)
         
-        print("✅ ROCKET: Захват активирован! Цель: " .. target.Name)
+        print("ROCKET: Grab activated on " .. target.Name)
     else
         if grabConnection then grabConnection:Disconnect() grabConnection = nil end
         if grabBodyVelocity then grabBodyVelocity:Destroy() grabBodyVelocity = nil end
@@ -817,17 +702,19 @@ local function GrabPlayer(targetName)
             end
         end
         
-        print("🔄 ROCKET: Захват отключён")
+        print("ROCKET: Grab deactivated")
         grabTarget = nil
     end
 end
 
--- 9.2 FTAP ПОВЫШЕНИЕ
+-- =====================================================
+-- FTAP BOOST FUNCTION
+-- =====================================================
 local function ToggleFTAPBoost(state)
     ftapBoostEnabled = state
     
     if ftapBoostEnabled then
-        print("⚡ ROCKET: FTAP повышение активировано!")
+        print("ROCKET: FTAP Boost activated")
         
         local function modifyStats()
             local char = Player.Character
@@ -840,7 +727,6 @@ local function ToggleFTAPBoost(state)
                         local newValue = child.Value * 10
                         if newValue < 1000000 then
                             child.Value = newValue
-                            print("📈 ROCKET: Повышено " .. child.Name .. " до " .. newValue)
                         end
                     elseif child:IsA("StringValue") then
                         if child.Name:lower():find("level") or 
@@ -848,7 +734,6 @@ local function ToggleFTAPBoost(state)
                            child.Name:lower():find("strength") or
                            child.Name:lower():find("rank") then
                             child.Value = "999"
-                            print("📈 ROCKET: Изменён " .. child.Name .. " на 999")
                         end
                     end
                     scanAndBoost(child, depth + 1)
@@ -875,20 +760,8 @@ local function ToggleFTAPBoost(state)
                             rem:FireServer("Boost", 999999)
                             rem:FireServer("SetLevel", 999)
                             rem:FireServer("Promote", Player.Name)
-                            print("📡 ROCKET: Отправлен запрос в " .. rem.Name)
                         end
                     end)
-                end
-            end
-            
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("NumberValue") or obj:IsA("IntValue") or obj:IsA("FloatValue") then
-                    if obj.Name:lower():find("level") or 
-                       obj.Name:lower():find("power") or 
-                       obj.Name:lower():find("rank") then
-                        obj.Value = 999
-                        print("📈 ROCKET: Повышено " .. obj.Name .. " до 999")
-                    end
                 end
             end
         end
@@ -909,70 +782,59 @@ local function ToggleFTAPBoost(state)
             ftapConnection:Disconnect()
             ftapConnection = nil
         end
-        print("⚡ ROCKET: FTAP повышение отключено")
+        print("ROCKET: FTAP Boost deactivated")
     end
 end
 
 -- =====================================================
--- 10. СОЗДАНИЕ ИНТЕРФЕЙСА (ВКЛАДКИ)
+-- TAB SYSTEM
 -- =====================================================
-
--- ПЕРЕМЕННАЯ ДЛЯ ОТСЛЕЖИВАНИЯ ТЕКУЩЕЙ ВКЛАДКИ
 local currentTab = nil
 local tabContents = {}
 
--- ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
 local function SwitchTab(tabName)
     if currentTab == tabName then return end
     currentTab = tabName
     
-    -- ОЧИЩАЕМ CONTENT AREA
     for _, child in pairs(ContentArea:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextBox") or child:IsA("Frame") or child:IsA("TextLabel") then
             child:Destroy()
         end
     end
     
-    -- ЗАГРУЖАЕМ КОНТЕНТ ВКЛАДКИ
     if tabContents[tabName] then
         tabContents[tabName]()
     end
 end
 
--- ВКЛАДКА "MAIN"
+-- MAIN TAB
 local function MainTab()
-    CreateSectionHeader("🛠️ ОСНОВНЫЕ ФУНКЦИИ")
-    
-    CreateToggle("✈️ FLY (WASD + Space/Shift)", function(state)
+    CreateHeader("MAIN FUNCTIONS")
+    CreateToggle("FLY (WASD + Space/Shift)", function(state)
         if state then StartFly() else StopFly() end
     end)
+    CreateToggle("NOCLIP", ToggleNoclip)
+    CreateToggle("SPEED HACK", ToggleSpeed)
+    CreateToggle("GOD MODE", ToggleGodMode)
+    CreateToggle("INFINITE JUMP", ToggleInfiniteJump)
+    CreateToggle("ANTI-FALL", ToggleAntiFall)
+    CreateToggle("THIRD PERSON", ToggleThirdPerson)
+    CreateToggle("ANTI-KICK", ToggleAntiKick)
     
-    CreateToggle("🚫 NOCLIP", ToggleNoclip)
-    CreateToggle("💨 SPEED HACK (x" .. speedMultiplier .. ")", ToggleSpeed)
-    CreateToggle("🛡️ GOD MODE", ToggleGodMode)
-    CreateToggle("🦘 INFINITE JUMP", ToggleInfiniteJump)
-    CreateToggle("🪂 ANTI-FALL", ToggleAntiFall)
-    CreateToggle("🔍 THIRD PERSON", ToggleThirdPerson)
-    CreateToggle("🛡️ ANTI-KICK", ToggleAntiKick)
+    CreateHeader("FARMING")
+    CreateToggle("AUTO-FARM", ToggleAutoFarm)
     
-    CreateSectionHeader("🌾 ФЕРМА")
-    CreateToggle("🌾 AUTO-FARM", ToggleAutoFarm)
-    
-    CreateSectionHeader("📦 ТЕЛЕПОРТЫ")
-    CreateButton("📦 TELEPORT TO TARGET", function()
+    CreateHeader("TELEPORT")
+    CreateButton("TELEPORT TO TARGET", function()
         local target = Players:GetPlayers()[2]
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             local char = Player.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
                 char.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 2, 0)
-                print("📦 ROCKET: Телепорт к " .. target.Name)
             end
-        else
-            print("📦 ROCKET: Цель не найдена")
         end
     end)
-    
-    CreateTextBox("📌 Teleport to X Y Z", "0 50 0", function(text)
+    CreateTextBox("TELEPORT TO XYZ", "0 50 0", function(text)
         local coords = {}
         for num in string.gmatch(text, "%S+") do
             table.insert(coords, tonumber(num))
@@ -981,51 +843,34 @@ local function MainTab()
             local char = Player.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
                 char.HumanoidRootPart.CFrame = CFrame.new(coords[1], coords[2], coords[3])
-                print("📌 ROCKET: Телепорт в " .. coords[1] .. ", " .. coords[2] .. ", " .. coords[3])
             end
-        else
-            print("📌 ROCKET: Неверные координаты")
         end
     end)
 end
 
--- ВКЛАДКА "VISUALS"
+-- VISUALS TAB
 local function VisualsTab()
-    CreateSectionHeader("👁️ ВИЗУАЛЬНЫЕ ФУНКЦИИ")
-    CreateToggle("👁️ ESP (ПОДСВЕТКА)", ToggleESP)
-    CreateToggle("🎯 AIMBOT", ToggleAimbot)
-    CreateToggle("❄️ FREEZE ALL", ToggleFreezeAll)
-    
-    CreateSectionHeader("🎨 НАСТРОЙКИ ВИЗУАЛА")
-    CreateSlider("ЯРКОСТЬ ESP", 0, 1, 0.5, function(value)
-        for _, h in pairs(espHighlights) do
-            if h and h.Parent then
-                h.FillTransparency = 1 - value
-            end
-        end
-    end)
+    CreateHeader("VISUAL FUNCTIONS")
+    CreateToggle("ESP (PLAYER HIGHLIGHT)", ToggleESP)
+    CreateToggle("AIMBOT", ToggleAimbot)
+    CreateToggle("FREEZE ALL PLAYERS", ToggleFreezeAll)
 end
 
--- ВКЛАДКА "PLAYER"
+-- PLAYER TAB
 local function PlayerTab()
-    CreateSectionHeader("🎯 ЗАХВАТ ИГРОКОВ")
-    
-    CreateButton("🔄 ЗАХВАТИТЬ ИГРОКА (ВКЛ/ВЫКЛ)", function()
+    CreateHeader("GRAB PLAYERS")
+    CreateButton("GRAB TARGET (TOGGLE)", function()
         local target = Players:GetPlayers()[2]
         if target then
             GrabPlayer(target.Name)
-        else
-            print("❌ ROCKET: Нет цели для захвата")
         end
     end)
-    
-    CreateTextBox("👤 Имя для захвата", "Введите имя игрока", function(text)
+    CreateTextBox("GRAB BY NAME", "Player name", function(text)
         if text and text ~= "" then
             GrabPlayer(text)
         end
     end)
-    
-    CreateButton("🔄 ОТПУСТИТЬ ЦЕЛЬ", function()
+    CreateButton("RELEASE TARGET", function()
         if grabEnabled then
             grabEnabled = false
             if grabConnection then grabConnection:Disconnect() grabConnection = nil end
@@ -1035,19 +880,14 @@ local function PlayerTab()
                 if targetHum then targetHum.PlatformStand = false end
             end
             grabTarget = nil
-            print("✅ ROCKET: Цель отпущена")
-        else
-            print("❌ ROCKET: Нет активного захвата")
         end
     end)
     
-    CreateSectionHeader("⚡ FTAP ПОВЫШЕНИЕ")
-    
-    CreateToggle("📈 FTAP БУСТ (ПОВЫШЕНИЕ СТАТОВ)", function(state)
+    CreateHeader("FTAP BOOST")
+    CreateToggle("FTAP BOOST (STATS)", function(state)
         ToggleFTAPBoost(state)
     end)
-    
-    CreateButton("💥 ПОВЫСИТЬ ВСЁ СЕЙЧАС", function()
+    CreateButton("BOOST NOW", function()
         local char = Player.Character
         if char then
             local function scanAndBoost(obj, depth)
@@ -1055,13 +895,11 @@ local function PlayerTab()
                 for _, child in pairs(obj:GetChildren()) do
                     if child:IsA("NumberValue") or child:IsA("IntValue") or child:IsA("FloatValue") then
                         child.Value = child.Value * 10
-                        print("📈 ROCKET: Повышено " .. child.Name .. " до " .. child.Value)
                     end
                     scanAndBoost(child, depth + 1)
                 end
             end
             scanAndBoost(char, 0)
-            
             local hum = char:FindFirstChild("Humanoid")
             if hum then
                 hum.MaxHealth = math.huge
@@ -1069,64 +907,63 @@ local function PlayerTab()
                 hum.WalkSpeed = 50
                 hum.JumpPower = 100
             end
-            print("✅ ROCKET: Всё повышено!")
         end
     end)
 end
 
--- ВКЛАДКА "SETTINGS"
+-- SETTINGS TAB
 local function SettingsTab()
-    CreateSectionHeader("⚙️ НАСТРОЙКИ")
-    
-    CreateTextBox("⚡ Set Speed Multiplier", "3", function(text)
+    CreateHeader("SETTINGS")
+    CreateTextBox("SET SPEED MULTIPLIER", "3", function(text)
         local value = tonumber(text)
         if value and value > 0 and value < 100 then
             speedMultiplier = value
-            print("⚡ ROCKET: Множитель скорости = " .. speedMultiplier)
-        else
-            print("⚡ ROCKET: Неверное значение")
         end
     end)
-    
-    CreateTextBox("✈️ Set Fly Speed", "60", function(text)
+    CreateTextBox("SET FLY SPEED", "60", function(text)
         local value = tonumber(text)
         if value and value > 0 and value < 500 then
             flySpeed = value
-            print("✈️ ROCKET: Скорость полёта = " .. flySpeed)
-        else
-            print("✈️ ROCKET: Неверное значение")
         end
     end)
-    
-    CreateButton("🔄 RESET CHARACTER", function()
+    CreateButton("RESET CHARACTER", function()
         Player.Character = nil
         Player.CharacterAdded:Wait()
-        print("🔄 ROCKET: Персонаж пересоздан")
     end)
-    
-    CreateButton("❌ ЗАКРЫТЬ ВСЁ", function()
+    CreateButton("CLOSE GUI", function()
         ScreenGui:Destroy()
-        print("❌ ROCKET: GUI закрыт")
     end)
 end
 
--- =====================================================
--- 11. РЕГИСТРАЦИЯ ВКЛАДОК
--- =====================================================
-
+-- REGISTER TABS
 tabContents["Main"] = MainTab
 tabContents["Visuals"] = VisualsTab
 tabContents["Player"] = PlayerTab
 tabContents["Settings"] = SettingsTab
 
--- СОЗДАНИЕ КНОПОК В SIDEBAR
+-- CREATE SIDEBAR BUTTONS
 local tabButtons = {}
-
-local function CreateSidebarButton(text, icon, tabName)
-    local btn = CreateTabButton(text, icon)
+local function CreateSidebarButton(text, tabName)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Sidebar
+    btn.Size = UDim2.new(0.85, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(200, 180, 220)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamSemibold
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
+        btn.BorderColor3 = Color3.fromRGB(130, 50, 200)
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
+    end)
     btn.MouseButton1Click:Connect(function()
         SwitchTab(tabName)
-        -- ПОДСВЕТКА АКТИВНОЙ ВКЛАДКИ
         for _, b in pairs(tabButtons) do
             b.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
             b.BorderColor3 = Color3.fromRGB(60, 40, 100)
@@ -1138,17 +975,16 @@ local function CreateSidebarButton(text, icon, tabName)
     return btn
 end
 
--- СОЗДАЁМ КНОПКИ
-CreateSidebarButton("MAIN", "🏠", "Main")
-CreateSidebarButton("VISUALS", "👁️", "Visuals")
-CreateSidebarButton("PLAYER", "👤", "Player")
-CreateSidebarButton("SETTINGS", "⚙️", "Settings")
+CreateSidebarButton("MAIN", "Main")
+CreateSidebarButton("VISUALS", "Visuals")
+CreateSidebarButton("PLAYER", "Player")
+CreateSidebarButton("SETTINGS", "Settings")
 
--- ЗАГРУЗКА ПЕРВОЙ ВКЛАДКИ ПО УМОЛЧАНИЮ
+-- LOAD FIRST TAB
 SwitchTab("Main")
 
 -- =====================================================
--- 12. АВТОВОССТАНОВЛЕНИЕ
+-- AUTO-RECOVERY
 -- =====================================================
 Player.CharacterAdded:Connect(function(char)
     wait(0.5)
@@ -1185,7 +1021,7 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================================================
--- 13. КОМАНДЫ ДЛЯ КОНСОЛИ
+-- CONSOLE COMMANDS
 -- =====================================================
 _G.grab = function(name)
     if name then
@@ -1210,29 +1046,30 @@ _G.release = function()
             if targetHum then targetHum.PlatformStand = false end
         end
         grabTarget = nil
-        print("✅ ROCKET: Цель отпущена")
     end
 end
 
 -- =====================================================
--- 14. ВЫВОД В КОНСОЛЬ
+-- CONSOLE OUTPUT
 -- =====================================================
 print("==========================================")
-print("🚀 ROCKET ULTRA v5.1 ЗАГРУЖЕН!")
-print("💜 WINDOWS UI СТИЛЬ + ТЁМНО-ФИОЛЕТОВАЯ ТЕМА")
-print("🛡️ АНТИ-КИК | 🎯 ГРАБ | ⚡ FTAP БУСТ")
+print("ROCKET ULTRA v6.0 LOADED")
+print("WINDOWS UI - NO EMOJIS - STABLE")
 print("==========================================")
-print("ФУНКЦИИ:")
-print("✈️ FLY | 🚫 NOCLIP | 💨 SPEED HACK")
-print("🛡️ GOD MODE | 🦘 INFINITE JUMP")
-print("🪂 ANTI-FALL | 👁️ ESP | 🎯 AIMBOT")
-print("❄️ FREEZE ALL | 🛡️ ANTI-KICK")
-print("🌾 AUTO-FARM | 🔍 THIRD PERSON")
-print("🎯 ГРАБ: _G.grab('Имя') или _G.grab()")
-print("⚡ FTAP: _G.ftap(true/false)")
-print("🔄 ОТПУСТИТЬ: _G.release()")
+print("FUNCTIONS:")
+print("FLY | NOCLIP | SPEED | GOD MODE")
+print("INFINITE JUMP | ANTI-FALL | ESP")
+print("AIMBOT | FREEZE | ANTI-KICK")
+print("AUTO-FARM | THIRD PERSON | GRAB")
+print("FTAP BOOST | TELEPORT")
+print("==========================================")
+print("COMMANDS:")
+print("_G.grab('name') - grab player")
+print("_G.grab() - grab second player")
+print("_G.ftap(true/false) - ftap boost")
+print("_G.release() - release target")
 print("==========================================")
 
 -- =====================================================
--- КОНЕЦ СКРИПТА
+-- END
 -- =====================================================
