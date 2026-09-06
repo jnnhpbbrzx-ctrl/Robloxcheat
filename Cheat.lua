@@ -1,7 +1,6 @@
 -- =====================================================
--- ROCKET ULTIMATE — РАБОЧИЙ ЧИТ ДЛЯ ВСЕХ ПЛЕЙСОВ
--- АВТОР: ROCKET (ROCKET WAY)
--- ВЕРСИЯ: 3.0
+-- ROCKET ULTRA v3.1 — ГАРАНТИРОВАННО ВИДИМЫЙ ЧИТ
+-- ИСПОЛЬЗУЕТ CoreGui (ПОВЕРХ ВСЕГО)
 -- =====================================================
 
 -- 1. ОСНОВНЫЕ СЕРВИСЫ
@@ -9,18 +8,14 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
 
--- 2. ПРОВЕРКА НА СУЩЕСТВОВАНИЕ ПЕРСОНАЖА
+-- 2. ПРОВЕРКА ПЕРСОНАЖА
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- 3. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+-- 3. ПЕРЕМЕННЫЕ
 local flying = false
 local flySpeed = 60
 local flyBodyVelocity = nil
@@ -42,21 +37,21 @@ local aimbotEnabled = false
 local aimbotConnection = nil
 local freezeAll = false
 local freezeConnection = nil
-local teleportCooldown = false
 
--- 4. СОЗДАНИЕ GUI (ГАРАНТИРОВАННО ВИДИМОЕ)
+-- 4. СОЗДАНИЕ GUI В CoreGui (ГАРАНТИРОВАННО ВИДИМО)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ROCKET_ULTRA"
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.Name = "ROCKET_ULTRA_GUI"
+ScreenGui.Parent = CoreGui  -- <--- ГЛАВНОЕ ИЗМЕНЕНИЕ
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true  -- <--- ИГНОРИРУЕТ ОТСТУПЫ ЭКРАНА
 
 -- ОСНОВНАЯ ПАНЕЛЬ
 local Frame = Instance.new("Frame")
 Frame.Parent = ScreenGui
-Frame.Size = UDim2.new(0, 450, 0, 550)
-Frame.Position = UDim2.new(0.5, -225, 0.5, -275)
+Frame.Size = UDim2.new(0, 400, 0, 500)
+Frame.Position = UDim2.new(0.5, -200, 0.5, -250)
 Frame.BackgroundColor3 = Color3.fromRGB(8, 0, 16)
-Frame.BackgroundTransparency = 0.15
+Frame.BackgroundTransparency = 0.1
 Frame.BorderSizePixel = 3
 Frame.BorderColor3 = Color3.fromRGB(130, 0, 255)
 Frame.Active = true
@@ -65,10 +60,10 @@ Frame.Draggable = true
 -- ЗАГОЛОВОК
 local Title = Instance.new("TextLabel")
 Title.Parent = Frame
-Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(18, 0, 35)
 Title.BorderColor3 = Color3.fromRGB(150, 0, 255)
-Title.Text = "ROCKET ULTRA v3.0"
+Title.Text = "ROCKET ULTRA v3.1"
 Title.TextColor3 = Color3.fromRGB(200, 100, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -77,7 +72,7 @@ Title.Font = Enum.Font.GothamBold
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = Frame
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 8)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 20)
 CloseBtn.BorderColor3 = Color3.fromRGB(150, 0, 255)
 CloseBtn.Text = "X"
@@ -91,8 +86,8 @@ end)
 -- СКРОЛЛИНГ-СПИСОК
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Parent = Frame
-ScrollFrame.Size = UDim2.new(1, -20, 1, -65)
-ScrollFrame.Position = UDim2.new(0, 10, 0, 50)
+ScrollFrame.Size = UDim2.new(1, -20, 1, -60)
+ScrollFrame.Position = UDim2.new(0, 10, 0, 45)
 ScrollFrame.BackgroundColor3 = Color3.fromRGB(5, 0, 10)
 ScrollFrame.BackgroundTransparency = 0.5
 ScrollFrame.BorderColor3 = Color3.fromRGB(100, 0, 200)
@@ -105,11 +100,11 @@ UIListLayout.Parent = ScrollFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 4)
 
--- ФУНКЦИЯ СОЗДАНИЯ КНОПКИ
+-- ФУНКЦИЯ КНОПКИ
 local function CreateButton(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ScrollFrame
-    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
     btn.BackgroundColor3 = Color3.fromRGB(12, 0, 25)
     btn.BorderColor3 = Color3.fromRGB(120, 0, 255)
     btn.Text = text
@@ -120,31 +115,11 @@ local function CreateButton(text, callback)
     return btn
 end
 
--- ФУНКЦИЯ СОЗДАНИЯ ПОЛЯ ВВОДА
-local function CreateTextBox(text, placeholder, callback)
-    local box = Instance.new("TextBox")
-    box.Parent = ScrollFrame
-    box.Size = UDim2.new(0.95, 0, 0, 28)
-    box.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
-    box.BorderColor3 = Color3.fromRGB(120, 0, 255)
-    box.Text = text
-    box.PlaceholderText = placeholder
-    box.TextColor3 = Color3.fromRGB(200, 150, 255)
-    box.TextScaled = true
-    box.Font = Enum.Font.GothamMedium
-    box.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            callback(box.Text)
-        end
-    end)
-    return box
-end
-
--- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
+-- ФУНКЦИЯ ПЕРЕКЛЮЧАТЕЛЯ
 local function CreateToggle(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ScrollFrame
-    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
     btn.BackgroundColor3 = Color3.fromRGB(12, 0, 25)
     btn.BorderColor3 = Color3.fromRGB(120, 0, 255)
     btn.Text = text .. " [OFF]"
@@ -160,11 +135,31 @@ local function CreateToggle(text, callback)
     return btn
 end
 
+-- ФУНКЦИЯ ПОЛЯ ВВОДА
+local function CreateTextBox(text, placeholder, callback)
+    local box = Instance.new("TextBox")
+    box.Parent = ScrollFrame
+    box.Size = UDim2.new(0.95, 0, 0, 26)
+    box.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
+    box.BorderColor3 = Color3.fromRGB(120, 0, 255)
+    box.Text = text
+    box.PlaceholderText = placeholder
+    box.TextColor3 = Color3.fromRGB(200, 150, 255)
+    box.TextScaled = true
+    box.Font = Enum.Font.GothamMedium
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            callback(box.Text)
+        end
+    end)
+    return box
+end
+
 -- =====================================================
 -- 5. ФУНКЦИИ ЧИТА
 -- =====================================================
 
--- 5.1 FLY (ПОЛЁТ)
+-- FLY
 local function StartFly()
     if flying then return end
     flying = true
@@ -172,12 +167,10 @@ local function StartFly()
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-    
     flyBodyVelocity = Instance.new("BodyVelocity")
     flyBodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
     flyBodyVelocity.Parent = root
-    
     flyConnection = RunService.RenderStepped:Connect(function()
         if not flying or not root then
             flyConnection:Disconnect()
@@ -207,7 +200,7 @@ CreateToggle("✈️ FLY (WASD + Space/Shift)", function(state)
     if state then StartFly() else StopFly() end
 end)
 
--- 5.2 NOCLIP
+-- NOCLIP
 CreateToggle("🚫 NOCLIP", function(state)
     noclip = state
     if noclip then
@@ -239,7 +232,7 @@ CreateToggle("🚫 NOCLIP", function(state)
     end
 end)
 
--- 5.3 SPEED HACK
+-- SPEED HACK
 CreateToggle("💨 SPEED HACK (x" .. speedMultiplier .. ")", function(state)
     speedHack = state
     if speedHack then
@@ -265,7 +258,7 @@ CreateToggle("💨 SPEED HACK (x" .. speedMultiplier .. ")", function(state)
     end
 end)
 
--- 5.4 GOD MODE
+-- GOD MODE
 CreateToggle("🛡️ GOD MODE", function(state)
     godMode = state
     if godMode then
@@ -302,7 +295,7 @@ CreateToggle("🛡️ GOD MODE", function(state)
     end
 end)
 
--- 5.5 INFINITE JUMP
+-- INFINITE JUMP
 CreateToggle("🦘 INFINITE JUMP", function(state)
     infiniteJump = state
     if infiniteJump then
@@ -323,7 +316,7 @@ CreateToggle("🦘 INFINITE JUMP", function(state)
     end
 end)
 
--- 5.6 ANTI-FALL
+-- ANTI-FALL
 CreateToggle("🪂 ANTI-FALL", function(state)
     antiFall = state
     if antiFall then
@@ -346,10 +339,11 @@ CreateToggle("🪂 ANTI-FALL", function(state)
     end
 end)
 
--- 5.7 ESP (ПОДСВЕТКА ИГРОКОВ)
+-- ESP
 CreateToggle("👁️ ESP", function(state)
     espEnabled = state
     if espEnabled then
+        local Players = game:GetService("Players")
         for _, plr in pairs(Players:GetPlayers()) do
             if plr ~= Player then
                 local char = plr.Character
@@ -373,7 +367,7 @@ CreateToggle("👁️ ESP", function(state)
     end
 end)
 
--- 5.8 AIMBOT
+-- AIMBOT
 CreateToggle("🎯 AIMBOT", function(state)
     aimbotEnabled = state
     if aimbotEnabled then
@@ -386,6 +380,7 @@ CreateToggle("🎯 AIMBOT", function(state)
             if not char then return end
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then return end
+            local Players = game:GetService("Players")
             for _, plr in pairs(Players:GetPlayers()) do
                 if plr ~= Player then
                     local targetChar = plr.Character
@@ -410,13 +405,14 @@ CreateToggle("🎯 AIMBOT", function(state)
     end
 end)
 
--- 5.9 FREEZE ALL
+-- FREEZE ALL
 CreateToggle("❄️ FREEZE ALL", function(state)
     freezeAll = state
     if freezeAll then
         if freezeConnection then freezeConnection:Disconnect() end
         freezeConnection = RunService.RenderStepped:Connect(function()
             if not freezeAll then freezeConnection:Disconnect() return end
+            local Players = game:GetService("Players")
             for _, plr in pairs(Players:GetPlayers()) do
                 if plr ~= Player then
                     local char = plr.Character
@@ -435,18 +431,21 @@ CreateToggle("❄️ FREEZE ALL", function(state)
     end
 end)
 
--- 5.10 TELEPORT TO TARGET
+-- TELEPORT TO TARGET
 CreateButton("📦 TELEPORT TO TARGET", function()
     local target = game:GetService("Players"):GetPlayers()[2]
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 2, 0)
-        print("ROCKET: Teleported to " .. target.Name)
+        local char = Player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 2, 0)
+            print("ROCKET: Teleported to " .. target.Name)
+        end
     else
         print("ROCKET: Target not found")
     end
 end)
 
--- 5.11 TELEPORT TO COORDINATES
+-- TELEPORT TO COORDS
 CreateTextBox("📌 Teleport to X Y Z", "0 50 0", function(text)
     local coords = {}
     for num in string.gmatch(text, "%S+") do
@@ -463,20 +462,19 @@ CreateTextBox("📌 Teleport to X Y Z", "0 50 0", function(text)
     end
 end)
 
--- 5.12 RESET CHARACTER
+-- RESET CHARACTER
 CreateButton("🔄 RESET CHARACTER", function()
     Player.Character = nil
     Player.CharacterAdded:Wait()
     print("ROCKET: Character reset")
 end)
 
--- 5.13 SET SPEED MULTIPLIER
+-- SET SPEED MULTIPLIER
 CreateTextBox("⚡ Set Speed Multiplier", "3", function(text)
     local value = tonumber(text)
     if value and value > 0 then
         speedMultiplier = value
         print("ROCKET: Speed multiplier set to " .. speedMultiplier)
-        -- Обновляем текст кнопки
         for _, child in pairs(ScrollFrame:GetChildren()) do
             if child:IsA("TextButton") and child.Text:find("SPEED HACK") then
                 child.Text = "💨 SPEED HACK (x" .. speedMultiplier .. ")"
@@ -487,7 +485,7 @@ CreateTextBox("⚡ Set Speed Multiplier", "3", function(text)
     end
 end)
 
--- 5.14 SET FLY SPEED
+-- SET FLY SPEED
 CreateTextBox("✈️ Set Fly Speed", "60", function(text)
     local value = tonumber(text)
     if value and value > 0 then
@@ -498,24 +496,8 @@ CreateTextBox("✈️ Set Fly Speed", "60", function(text)
     end
 end)
 
--- 5.15 KICK TARGET (ЕСЛИ ЕСТЬ ДОСТУП)
-CreateTextBox("👢 Kick Player", "PlayerName", function(text)
-    if text and text ~= "" then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr.Name:lower():find(text:lower()) or plr.DisplayName:lower():find(text:lower()) then
-                pcall(function()
-                    plr:Kick("Kicked by ROCKET")
-                    print("ROCKET: Kicked " .. plr.Name)
-                end)
-                return
-            end
-        end
-        print("ROCKET: Target not found")
-    end
-end)
-
 -- =====================================================
--- 6. АВТОМАТИЧЕСКОЕ ВОССТАНОВЛЕНИЕ ПЕРСОНАЖА
+-- 6. АВТОВОССТАНОВЛЕНИЕ
 -- =====================================================
 Player.CharacterAdded:Connect(function(char)
     wait(0.5)
@@ -546,13 +528,9 @@ end)
 -- 7. ВЫВОД В КОНСОЛЬ
 -- =====================================================
 print("==========================================")
-print("ROCKET ULTRA v3.0 ЗАГРУЖЕН!")
-print("GUI должен появиться в центре экрана.")
-print("Если не видно — проверьте консоль (F9).")
-print("==========================================")
-print("Функции: Fly, NoClip, Speed, God Mode,")
-print("Infinite Jump, Anti-Fall, ESP, Aimbot,")
-print("Freeze All, Teleport, Kick, Reset")
+print("ROCKET ULTRA v3.1 ЗАГРУЖЕН!")
+print("GUI создан в CoreGui — поверх всего.")
+print("Если не видно — нажмите F9 и проверьте ошибки.")
 print("==========================================")
 
 -- =====================================================
