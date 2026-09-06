@@ -1,7 +1,9 @@
 -- =====================================================
--- ROCKET ULTRA v6.1 - FIXED VERSION
+-- ROCKET ULTRA v7.0
+-- АНТИ-КИК + ГРАБ С АНИМАЦИЕЙ + ВСЕ ФУНКЦИИ
 -- =====================================================
 
+-- 1. ОСНОВНЫЕ СЕРВИСЫ
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -9,123 +11,128 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 
--- CREATE GUI
+-- 2. ПРОВЕРКА ПЕРСОНАЖА
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- =====================================================
+-- 3. СОЗДАНИЕ ГУИ
+-- =====================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ROCKET_GUI"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- MAIN FRAME
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 400, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Size = UDim2.new(0, 420, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
+MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(130, 50, 200)
+MainFrame.BorderColor3 = Color3.fromRGB(150, 0, 255)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- TITLE
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.BorderSizePixel = 0
-Title.Text = "ROCKET ULTRA v6.1"
-Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+Title.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
+Title.BorderColor3 = Color3.fromRGB(150, 0, 255)
+Title.Text = "ROCKET ULTRA v7.0"
+Title.TextColor3 = Color3.fromRGB(200, 100, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 
--- CLOSE BUTTON
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = MainFrame
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 20)
-CloseBtn.BorderSizePixel = 0
+CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 20)
+CloseBtn.BorderColor3 = Color3.fromRGB(150, 0, 255)
 CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseBtn.TextScaled = true
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- SCROLLING FRAME
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Parent = MainFrame
 ScrollFrame.Size = UDim2.new(1, -20, 1, -60)
 ScrollFrame.Position = UDim2.new(0, 10, 0, 50)
-ScrollFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-ScrollFrame.BorderSizePixel = 0
+ScrollFrame.BackgroundColor3 = Color3.fromRGB(5, 0, 10)
+ScrollFrame.BackgroundTransparency = 0.5
+ScrollFrame.BorderColor3 = Color3.fromRGB(100, 0, 200)
 ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollFrame.ScrollBarThickness = 4
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 0, 255)
 
 local UIList = Instance.new("UIListLayout")
 UIList.Parent = ScrollFrame
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
-UIList.Padding = UDim.new(0, 5)
+UIList.Padding = UDim.new(0, 4)
 
--- BUTTON FUNCTION
 local function CreateButton(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ScrollFrame
-    btn.Size = UDim2.new(0.95, 0, 0, 35)
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
+    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(12, 0, 25)
+    btn.BorderColor3 = Color3.fromRGB(120, 0, 255)
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(220, 180, 255)
+    btn.TextColor3 = Color3.fromRGB(220, 150, 255)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamSemibold
     btn.MouseButton1Click:Connect(callback)
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
-        btn.BorderColor3 = Color3.fromRGB(130, 50, 200)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-        btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
-    end)
     return btn
 end
 
--- TOGGLE FUNCTION
 local function CreateToggle(text, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = ScrollFrame
-    btn.Size = UDim2.new(0.95, 0, 0, 35)
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
+    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(12, 0, 25)
+    btn.BorderColor3 = Color3.fromRGB(120, 0, 255)
     btn.Text = text .. " [OFF]"
-    btn.TextColor3 = Color3.fromRGB(220, 180, 255)
+    btn.TextColor3 = Color3.fromRGB(220, 150, 255)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamSemibold
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.Text = text .. (state and " [ON]" or " [OFF]")
-        btn.BorderColor3 = state and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 40, 100)
+        btn.BorderColor3 = state and Color3.fromRGB(0, 200, 50) or Color3.fromRGB(120, 0, 255)
         callback(state)
-    end)
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
-        btn.BorderColor3 = Color3.fromRGB(130, 50, 200)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-        btn.BorderColor3 = Color3.fromRGB(60, 40, 100)
     end)
     return btn
 end
 
+local function CreateTextBox(text, placeholder, callback)
+    local box = Instance.new("TextBox")
+    box.Parent = ScrollFrame
+    box.Size = UDim2.new(0.95, 0, 0, 28)
+    box.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
+    box.BorderColor3 = Color3.fromRGB(120, 0, 255)
+    box.Text = text
+    box.PlaceholderText = placeholder
+    box.TextColor3 = Color3.fromRGB(200, 150, 255)
+    box.TextScaled = true
+    box.Font = Enum.Font.GothamMedium
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            callback(box.Text)
+        end
+    end)
+    return box
+end
+
 -- =====================================================
--- VARIABLES
+-- 4. ПЕРЕМЕННЫЕ
 -- =====================================================
 local flying = false
 local flySpeed = 60
@@ -140,10 +147,223 @@ local godMode = false
 local godModeConnection = nil
 local infiniteJump = false
 local infiniteJumpConnection = nil
+local antiFall = false
+local antiFallConnection = nil
+local espEnabled = false
+local espHighlights = {}
+local aimbotEnabled = false
+local aimbotConnection = nil
+local freezeAll = false
+local freezeConnection = nil
+local thirdPerson = false
+local thirdPersonConnection = nil
+local antiKick = false
+local antiKickConnection = nil
+
+-- ПЕРЕМЕННЫЕ ДЛЯ ГРАБА
+local grabEnabled = false
+local grabTarget = nil
+local grabConnection = nil
+local grabBodyVelocity = nil
+local grabFaceConnection = nil
 
 -- =====================================================
--- FLY FUNCTION
+-- 5. МОЩНЫЙ АНТИ-КИК
 -- =====================================================
+local function ToggleAntiKick(state)
+    antiKick = state
+    if antiKick then
+        if antiKickConnection then antiKickConnection:Disconnect() end
+        
+        -- МЕТОД 1: ПЕРЕХВАТ КИКА
+        antiKickConnection = Player:WaitForChild("Kick"):Connect(function()
+            if antiKick then
+                print("ROCKET: KICK BLOCKED")
+                wait(0.1)
+                Player.Character = Player.CharacterAdded:Wait()
+                wait(0.2)
+                local char = Player.Character
+                if char then
+                    local hum = char:FindFirstChild("Humanoid")
+                    if hum then
+                        hum.MaxHealth = math.huge
+                        hum.Health = math.huge
+                    end
+                end
+                -- АВТО-РЕКОННЕКТ
+                pcall(function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+                end)
+            end
+        end)
+        
+        -- МЕТОД 2: ЗАЩИТА ОТ УДАЛЕНИЯ ПЕРСОНАЖА
+        Player.CharacterAdded:Connect(function(char)
+            if antiKick then
+                wait(0.5)
+                char:WaitForChild("Humanoid").MaxHealth = math.huge
+                char.Humanoid.Health = math.huge
+            end
+        end)
+        
+        -- МЕТОД 3: ОБХОД БАНА (ЛОКАЛЬНО)
+        pcall(function()
+            local banValues = Player:GetChildren()
+            for _, v in pairs(banValues) do
+                if v.Name:lower():find("ban") or v.Name:lower():find("banned") then
+                    v:Destroy()
+                end
+            end
+        end)
+        
+        print("ROCKET: ANTI-KICK ACTIVATED")
+    else
+        if antiKickConnection then
+            antiKickConnection:Disconnect()
+            antiKickConnection = nil
+        end
+        print("ROCKET: ANTI-KICK DEACTIVATED")
+    end
+end
+
+-- =====================================================
+-- 6. ГРАБ С АНИМАЦИЕЙ (ЛИЦО К ПАХУ)
+-- =====================================================
+local function GrabPlayer(targetName)
+    local target = nil
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Name:lower():find(targetName:lower()) or plr.DisplayName:lower():find(targetName:lower()) then
+            target = plr
+            break
+        end
+    end
+    
+    if not target or target == Player then
+        print("ROCKET: Target not found")
+        return
+    end
+    
+    if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+        print("ROCKET: Target has no character")
+        return
+    end
+    
+    grabTarget = target
+    grabEnabled = not grabEnabled
+    
+    if grabEnabled then
+        print("ROCKET: Grabbing " .. target.Name .. " (face to crotch)")
+        
+        local targetRoot = target.Character.HumanoidRootPart
+        local targetHead = target.Character:FindFirstChild("Head")
+        local targetTorso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+        
+        -- ОТКЛЮЧАЕМ ГРАВИТАЦИЮ ЦЕЛИ
+        local targetHum = target.Character:FindFirstChild("Humanoid")
+        if targetHum then
+            targetHum.PlatformStand = true
+        end
+        
+        -- СОЗДАЁМ BODYVELOCITY ДЛЯ УДЕРЖАНИЯ
+        grabBodyVelocity = Instance.new("BodyVelocity")
+        grabBodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        grabBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        grabBodyVelocity.Parent = targetRoot
+        
+        -- ОСНОВНОЙ ЦИКЛ ГРАБА
+        grabConnection = RunService.RenderStepped:Connect(function()
+            if not grabEnabled or not grabTarget or not grabTarget.Character then
+                grabEnabled = false
+                if grabConnection then grabConnection:Disconnect() grabConnection = nil end
+                if grabBodyVelocity then grabBodyVelocity:Destroy() grabBodyVelocity = nil end
+                if grabFaceConnection then grabFaceConnection:Disconnect() grabFaceConnection = nil end
+                return
+            end
+            
+            local playerRoot = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            local targetRoot = grabTarget.Character:FindFirstChild("HumanoidRootPart")
+            local targetHead = grabTarget.Character:FindFirstChild("Head")
+            
+            if not playerRoot or not targetRoot then return end
+            
+            -- РАССТОЯНИЕ ДО ЦЕЛИ
+            local distance = (playerRoot.Position - targetRoot.Position).Magnitude
+            
+            -- ПОЗИЦИЯ ДЛЯ ЛИЦА К ПАХУ (СПЕРЕДИ, ЧУТЬ НИЖЕ)
+            local crotchPosition = playerRoot.Position + Vector3.new(0, -1.5, 0) -- ЧУТЬ НИЖЕ ПОЯСА
+            local offset = (crotchPosition - targetRoot.Position).Unit * 1.5
+            
+            if distance > 3 then
+                -- ПРИТЯГИВАЕМ
+                local force = (crotchPosition - targetRoot.Position).Unit * math.min(distance * 10, 200)
+                grabBodyVelocity.Velocity = force
+            elseif distance < 1.5 then
+                -- ОТТАЛКИВАЕМ ЕСЛИ СЛИШКОМ БЛИЗКО
+                grabBodyVelocity.Velocity = -(crotchPosition - targetRoot.Position).Unit * 20
+            else
+                -- УДЕРЖИВАЕМ НА МЕСТЕ
+                grabBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                targetRoot.Velocity = Vector3.new(0, 0, 0)
+                targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                
+                -- ПОВОРАЧИВАЕМ ЦЕЛЬ ЛИЦОМ К ПАХУ
+                local lookDirection = (playerRoot.Position - targetRoot.Position).Unit
+                targetRoot.CFrame = CFrame.new(targetRoot.Position, targetRoot.Position + lookDirection)
+                
+                -- НАКЛОНЯЕМ ЦЕЛЬ (ЛИЦО ВНИЗ К ПАХУ)
+                if targetHead then
+                    targetHead.CFrame = CFrame.new(targetHead.Position, crotchPosition)
+                end
+                if targetTorso then
+                    targetTorso.CFrame = CFrame.new(targetTorso.Position, crotchPosition) * CFrame.Angles(0.5, 0, 0)
+                end
+            end
+        end)
+        
+        -- АНИМАЦИЯ ДЛЯ ЦЕЛИ (ИМИТАЦИЯ ЛЕЖАНИЯ)
+        grabFaceConnection = RunService.Heartbeat:Connect(function()
+            if not grabEnabled or not grabTarget or not grabTarget.Character then
+                grabFaceConnection:Disconnect()
+                return
+            end
+            local targetRoot = grabTarget.Character:FindFirstChild("HumanoidRootPart")
+            local playerRoot = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot and playerRoot then
+                -- ПОСТОЯННО ПОВОРАЧИВАЕМ ЛИЦО К ПАХУ
+                local crotchPos = playerRoot.Position + Vector3.new(0, -1.5, 0)
+                targetRoot.CFrame = CFrame.new(targetRoot.Position, crotchPos)
+            end
+        end)
+        
+        print("ROCKET: Grab activated on " .. target.Name .. " (face to crotch)")
+    else
+        -- ОТКЛЮЧАЕМ ГРАБ
+        if grabConnection then grabConnection:Disconnect() grabConnection = nil end
+        if grabBodyVelocity then grabBodyVelocity:Destroy() grabBodyVelocity = nil end
+        if grabFaceConnection then grabFaceConnection:Disconnect() grabFaceConnection = nil end
+        
+        if grabTarget and grabTarget.Character then
+            local targetHum = grabTarget.Character:FindFirstChild("Humanoid")
+            if targetHum then
+                targetHum.PlatformStand = false
+            end
+            local targetRoot = grabTarget.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                targetRoot.Velocity = Vector3.new(0, 0, 0)
+                targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+        
+        print("ROCKET: Grab deactivated")
+        grabTarget = nil
+    end
+end
+
+-- =====================================================
+-- 7. ОСТАЛЬНЫЕ ФУНКЦИИ
+-- =====================================================
+
+-- FLY
 local function StartFly()
     if flying then return end
     flying = true
@@ -182,9 +402,7 @@ local function StopFly()
     end
 end
 
--- =====================================================
--- NOCLIP FUNCTION
--- =====================================================
+-- NOCLIP
 local function ToggleNoclip(state)
     noclip = state
     if noclip then
@@ -213,9 +431,7 @@ local function ToggleNoclip(state)
     end
 end
 
--- =====================================================
--- SPEED FUNCTION
--- =====================================================
+-- SPEED
 local function ToggleSpeed(state)
     speedHack = state
     if speedHack then
@@ -238,9 +454,7 @@ local function ToggleSpeed(state)
     end
 end
 
--- =====================================================
--- GOD MODE FUNCTION
--- =====================================================
+-- GOD MODE
 local function ToggleGodMode(state)
     godMode = state
     if godMode then
@@ -277,9 +491,7 @@ local function ToggleGodMode(state)
     end
 end
 
--- =====================================================
--- INFINITE JUMP FUNCTION
--- =====================================================
+-- INFINITE JUMP
 local function ToggleInfiniteJump(state)
     infiniteJump = state
     if infiniteJump then
@@ -297,8 +509,134 @@ local function ToggleInfiniteJump(state)
     end
 end
 
+-- ANTI-FALL
+local function ToggleAntiFall(state)
+    antiFall = state
+    if antiFall then
+        if antiFallConnection then antiFallConnection:Disconnect() end
+        antiFallConnection = RunService.RenderStepped:Connect(function()
+            if not antiFall then antiFallConnection:Disconnect() return end
+            local char = Player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local pos = char.HumanoidRootPart.Position
+                if pos.Y < -30 then
+                    char.HumanoidRootPart.Position = Vector3.new(pos.X, 20, pos.Z)
+                end
+            end
+        end)
+    else
+        if antiFallConnection then antiFallConnection:Disconnect() antiFallConnection = nil end
+    end
+end
+
+-- ESP
+local function ToggleESP(state)
+    espEnabled = state
+    if espEnabled then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= Player then
+                local char = plr.Character
+                if char then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Parent = char
+                    highlight.Adornee = char
+                    highlight.FillColor = Color3.fromRGB(150, 0, 255)
+                    highlight.FillTransparency = 0.25
+                    highlight.OutlineColor = Color3.fromRGB(200, 0, 255)
+                    highlight.OutlineTransparency = 0.1
+                    table.insert(espHighlights, highlight)
+                end
+            end
+        end
+    else
+        for _, h in pairs(espHighlights) do
+            if h and h.Parent then h:Destroy() end
+        end
+        espHighlights = {}
+    end
+end
+
+-- AIMBOT
+local function ToggleAimbot(state)
+    aimbotEnabled = state
+    if aimbotEnabled then
+        if aimbotConnection then aimbotConnection:Disconnect() end
+        aimbotConnection = RunService.RenderStepped:Connect(function()
+            if not aimbotEnabled then aimbotConnection:Disconnect() return end
+            local nearest = nil
+            local minDist = math.huge
+            local char = Player.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player then
+                    local targetChar = plr.Character
+                    if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                        local dist = (root.Position - targetChar.HumanoidRootPart.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            nearest = targetChar.HumanoidRootPart
+                        end
+                    end
+                end
+            end
+            if nearest then
+                root.CFrame = CFrame.new(root.Position, nearest.Position)
+            end
+        end)
+    else
+        if aimbotConnection then aimbotConnection:Disconnect() aimbotConnection = nil end
+    end
+end
+
+-- FREEZE ALL
+local function ToggleFreezeAll(state)
+    freezeAll = state
+    if freezeAll then
+        if freezeConnection then freezeConnection:Disconnect() end
+        freezeConnection = RunService.RenderStepped:Connect(function()
+            if not freezeAll then freezeConnection:Disconnect() return end
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player then
+                    local char = plr.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                        char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    end
+                end
+            end
+        end)
+    else
+        if freezeConnection then freezeConnection:Disconnect() freezeConnection = nil end
+    end
+end
+
+-- THIRD PERSON
+local function ToggleThirdPerson(state)
+    thirdPerson = state
+    if thirdPerson then
+        if thirdPersonConnection then thirdPersonConnection:Disconnect() end
+        thirdPersonConnection = RunService.RenderStepped:Connect(function()
+            if not thirdPerson then thirdPersonConnection:Disconnect() return end
+            local char = Player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local cam = workspace.CurrentCamera
+                local root = char.HumanoidRootPart
+                local offset = Vector3.new(0, 5, 15)
+                local targetPos = root.Position + offset
+                cam.CameraType = Enum.CameraType.Scriptable
+                cam.CFrame = CFrame.new(targetPos, root.Position)
+            end
+        end)
+    else
+        if thirdPersonConnection then thirdPersonConnection:Disconnect() thirdPersonConnection = nil end
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+    end
+end
+
 -- =====================================================
--- CREATE UI BUTTONS
+-- 8. КНОПКИ В ГУИ
 -- =====================================================
 CreateToggle("FLY (WASD + Space/Shift)", function(state)
     if state then StartFly() else StopFly() end
@@ -308,18 +646,50 @@ CreateToggle("NOCLIP", ToggleNoclip)
 CreateToggle("SPEED HACK", ToggleSpeed)
 CreateToggle("GOD MODE", ToggleGodMode)
 CreateToggle("INFINITE JUMP", ToggleInfiniteJump)
+CreateToggle("ANTI-FALL", ToggleAntiFall)
+CreateToggle("ESP", ToggleESP)
+CreateToggle("AIMBOT", ToggleAimbot)
+CreateToggle("FREEZE ALL", ToggleFreezeAll)
+CreateToggle("THIRD PERSON", ToggleThirdPerson)
+CreateToggle("ANTI-KICK", ToggleAntiKick)
+
+CreateButton("GRAB TARGET (FACE TO CROTCH)", function()
+    local target = Players:GetPlayers()[2]
+    if target then
+        GrabPlayer(target.Name)
+    else
+        print("ROCKET: No target found")
+    end
+end)
+
+CreateTextBox("GRAB BY NAME", "Player name", function(text)
+    if text and text ~= "" then
+        GrabPlayer(text)
+    end
+end)
+
+CreateButton("RELEASE TARGET", function()
+    if grabEnabled then
+        grabEnabled = false
+        if grabConnection then grabConnection:Disconnect() grabConnection = nil end
+        if grabBodyVelocity then grabBodyVelocity:Destroy() grabBodyVelocity = nil end
+        if grabFaceConnection then grabFaceConnection:Disconnect() grabFaceConnection = nil end
+        if grabTarget and grabTarget.Character then
+            local targetHum = grabTarget.Character:FindFirstChild("Humanoid")
+            if targetHum then targetHum.PlatformStand = false end
+        end
+        grabTarget = nil
+        print("ROCKET: Target released")
+    end
+end)
 
 CreateButton("RESET CHARACTER", function()
     Player.Character = nil
     Player.CharacterAdded:Wait()
 end)
 
-CreateButton("CLOSE GUI", function()
-    ScreenGui:Destroy()
-end)
-
 -- =====================================================
--- AUTO-RECOVERY
+-- 9. АВТОВОССТАНОВЛЕНИЕ
 -- =====================================================
 Player.CharacterAdded:Connect(function(char)
     wait(0.5)
@@ -345,10 +715,58 @@ Player.CharacterAdded:Connect(function(char)
             hum.JumpPower = 50 * speedMultiplier
         end
     end
+    if flying then
+        wait(0.2)
+        StartFly()
+    end
 end)
 
 -- =====================================================
--- OUTPUT
+-- 10. КОНСОЛЬНЫЕ КОМАНДЫ
 -- =====================================================
-print("ROCKET ULTRA v6.1 LOADED")
-print("GUI should appear in the center of the screen")
+_G.grab = function(name)
+    if name then
+        GrabPlayer(name)
+    else
+        local target = Players:GetPlayers()[2]
+        if target then GrabPlayer(target.Name) end
+    end
+end
+
+_G.release = function()
+    if grabEnabled then
+        grabEnabled = false
+        if grabConnection then grabConnection:Disconnect() grabConnection = nil end
+        if grabBodyVelocity then grabBodyVelocity:Destroy() grabBodyVelocity = nil end
+        if grabFaceConnection then grabFaceConnection:Disconnect() grabFaceConnection = nil end
+        if grabTarget and grabTarget.Character then
+            local targetHum = grabTarget.Character:FindFirstChild("Humanoid")
+            if targetHum then targetHum.PlatformStand = false end
+        end
+        grabTarget = nil
+        print("ROCKET: Target released")
+    end
+end
+
+_G.antikick = function(state)
+    ToggleAntiKick(state or true)
+end
+
+-- =====================================================
+-- 11. ВЫВОД
+-- =====================================================
+print("==========================================")
+print("ROCKET ULTRA v7.0 LOADED")
+print("ANTI-KICK: ACTIVE (toggle in menu)")
+print("GRAB: face to crotch animation")
+print("==========================================")
+print("COMMANDS:")
+print("_G.grab('name') - grab player (face to crotch)")
+print("_G.grab() - grab second player")
+print("_G.release() - release target")
+print("_G.antikick(true/false) - toggle anti-kick")
+print("==========================================")
+
+-- =====================================================
+-- КОНЕЦ
+-- =====================================================
