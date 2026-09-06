@@ -1,550 +1,357 @@
--- =====================================================
--- ROCKET ULTRA v9.1
--- УНИВЕРСАЛЬНАЯ ВЕРСИЯ
--- РАБОТАЕТ В ЛЮБОМ ЭКЗЕКЬЮТОРЕ
--- =====================================================
+-- LocalScript в StarterPlayerScripts или внутри ScreenGui
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- 1. ОСНОВНЫЕ СЕРВИСЫ
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
+-- Создаём GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "FTAP_CheatPanel"
+gui.Parent = player.PlayerGui
 
--- 2. ОЖИДАНИЕ ЗАГРУЗКИ ПЕРСОНАЖА
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -300)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = gui
 
--- 3. ПЕРЕМЕННЫЕ
-local flying = false
-local flySpeed = 60
-local flyBodyVelocity = nil
-local flyConnection = nil
-local noclip = false
-local noclipConnection = nil
-local speedHack = false
-local speedMultiplier = 3
-local speedConnection = nil
-local godMode = false
-local godModeConnection = nil
-local infiniteJump = false
-local infiniteJumpConnection = nil
-local antiKick = false
-local antiKickConnection = nil
+-- Заголовок
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+title.Text = "FTAP PANEL v1.0"
+title.TextColor3 = Color3.fromRGB(255, 200, 100)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = mainFrame
 
--- =====================================================
--- 4. СОЗДАНИЕ ГУИ (РАБОТАЕТ В ЛЮБОМ ЭКЗЕКЬЮТОРЕ)
--- =====================================================
+-- Скроллинг-контейнер
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -10, 1, -60)
+scroll.Position = UDim2.new(0, 5, 0, 45)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 800)
+scroll.ScrollBarThickness = 8
+scroll.Parent = mainFrame
 
--- ПЫТАЕМСЯ СОЗДАТЬ В CoreGui, ЕСЛИ НЕ ПОЛУЧАЕТСЯ — В PlayerGui
-local guiParent = pcall(function()
-    return game:GetService("CoreGui")
-end) and game:GetService("CoreGui") or Player:WaitForChild("PlayerGui")
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ROCKET_GUI"
-ScreenGui.Parent = guiParent
-ScreenGui.ResetOnSpawn = false
-
--- ОСНОВНОЕ ОКНО
-local MainFrame = Instance.new("Frame")
-MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 380, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -190, 0.5, -225)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(150, 0, 255)
-MainFrame.Active = true
-MainFrame.Draggable = true
-
--- ЗАГОЛОВОК
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-Title.Text = "ROCKET ULTRA v9.1"
-Title.TextColor3 = Color3.fromRGB(200, 100, 255)
-Title.TextScaled = true
-Title.Font = Enum.Font.GothamBold
-
--- КНОПКА ЗАКРЫТИЯ
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = MainFrame
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 20)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-CloseBtn.TextScaled = true
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- БОКОВАЯ ПАНЕЛЬ (ВКЛАДКИ)
-local Sidebar = Instance.new("Frame")
-Sidebar.Parent = MainFrame
-Sidebar.Size = UDim2.new(0, 100, 1, -45)
-Sidebar.Position = UDim2.new(0, 0, 0, 45)
-Sidebar.BackgroundColor3 = Color3.fromRGB(16, 0, 30)
-Sidebar.BorderSizePixel = 0
-
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.Parent = Sidebar
-TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 5)
-TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
--- ОСНОВНАЯ ОБЛАСТЬ
-local ContentArea = Instance.new("Frame")
-ContentArea.Parent = MainFrame
-ContentArea.Size = UDim2.new(1, -110, 1, -45)
-ContentArea.Position = UDim2.new(0, 105, 0, 45)
-ContentArea.BackgroundColor3 = Color3.fromRGB(18, 0, 35)
-ContentArea.BorderSizePixel = 0
-
--- =====================================================
--- 5. ФУНКЦИИ СОЗДАНИЯ ЭЛЕМЕНТОВ
--- =====================================================
-local currentTab = "MAIN"
-
-local function ClearContent()
-    for _, child in pairs(ContentArea:GetChildren()) do
-        child:Destroy()
-    end
-end
-
-local function CreateToggle(text, callback)
+local function addButton(text, y, callback)
     local btn = Instance.new("TextButton")
-    btn.Parent = ContentArea
-    btn.Size = UDim2.new(0.9, 0, 0, 38)
-    btn.Position = UDim2.new(0.05, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(100, 0, 200)
-    btn.Text = text .. " [OFF]"
-    btn.TextColor3 = Color3.fromRGB(220, 180, 240)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamSemibold
-
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.Text = text .. (state and " [ON]" or " [OFF]")
-        btn.BorderColor3 = state and Color3.fromRGB(0, 200, 50) or Color3.fromRGB(100, 0, 200)
-        callback(state)
-    end)
-
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(30, 0, 60)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-    end)
-
-    return btn
-end
-
-local function CreateButton(text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Parent = ContentArea
-    btn.Size = UDim2.new(0.9, 0, 0, 38)
-    btn.Position = UDim2.new(0.05, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(100, 0, 200)
+    btn.Size = UDim2.new(1, -10, 0, 40)
+    btn.Position = UDim2.new(0, 5, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(220, 180, 240)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamSemibold
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 18
+    btn.Parent = scroll
     btn.MouseButton1Click:Connect(callback)
-
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 0, 80)
-        btn.BorderColor3 = Color3.fromRGB(200, 0, 255)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
-        btn.BorderColor3 = Color3.fromRGB(100, 0, 200)
-    end)
-
     return btn
 end
 
-local function CreateHeader(text)
-    local header = Instance.new("TextLabel")
-    header.Parent = ContentArea
-    header.Size = UDim2.new(0.9, 0, 0, 28)
-    header.Position = UDim2.new(0.05, 0, 0, 0)
-    header.BackgroundColor3 = Color3.fromRGB(30, 0, 60)
-    header.BackgroundTransparency = 0.7
-    header.BorderSizePixel = 0
-    header.Text = "▸ " .. text
-    header.TextColor3 = Color3.fromRGB(200, 150, 255)
-    header.TextScaled = true
-    header.Font = Enum.Font.GothamBold
-    header.TextXAlignment = Enum.TextXAlignment.Left
-    return header
+local function addSlider(text, y, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 50)
+    frame.Position = UDim2.new(0, 5, 0, y)
+    frame.BackgroundTransparency = 1
+    frame.Parent = scroll
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.5, 0, 0, 20)
+    label.Text = text .. ": " .. default
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 16
+    label.BackgroundTransparency = 1
+    label.Parent = frame
+
+    local slider = Instance.new("UISlider")
+    slider.Size = UDim2.new(0.8, 0, 0, 20)
+    slider.Position = UDim2.new(0, 0, 0, 25)
+    slider.MinValue = min
+    slider.MaxValue = max
+    slider.Value = default
+    slider.Parent = frame
+    slider.Changed:Connect(function(val)
+        label.Text = text .. ": " .. math.round(val)
+        callback(val)
+    end)
+    return slider
 end
 
-local function CreateTabButton(text, tabName)
-    local btn = Instance.new("TextButton")
-    btn.Parent = Sidebar
-    btn.Size = UDim2.new(0.85, 0, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-    btn.BorderSizePixel = 1
-    btn.BorderColor3 = Color3.fromRGB(80, 0, 150)
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(200, 170, 220)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamSemibold
+local function addDropdown(text, y, items, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 40)
+    frame.Position = UDim2.new(0, 5, 0, y)
+    frame.BackgroundTransparency = 1
+    frame.Parent = scroll
 
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(35, 0, 70)
-        btn.BorderColor3 = Color3.fromRGB(150, 0, 255)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.3, 0, 1, 0)
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 16
+    label.BackgroundTransparency = 1
+    label.Parent = frame
+
+    local drop = Instance.new("TextBox")
+    drop.Size = UDim2.new(0.6, 0, 1, 0)
+    drop.Position = UDim2.new(0.35, 0, 0, 0)
+    drop.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    drop.Text = items[1]
+    drop.TextColor3 = Color3.fromRGB(255, 255, 255)
+    drop.Font = Enum.Font.Gotham
+    drop.TextSize = 16
+    drop.Parent = frame
+    -- Простой выбор по клику (циклический)
+    local idx = 1
+    drop.MouseButton1Click:Connect(function()
+        idx = idx % #items + 1
+        drop.Text = items[idx]
+        callback(items[idx])
     end)
-
-    btn.MouseLeave:Connect(function()
-        if currentTab ~= tabName then
-            btn.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-            btn.BorderColor3 = Color3.fromRGB(80, 0, 150)
-        end
-    end)
-
-    btn.MouseButton1Click:Connect(function()
-        SwitchTab(tabName)
-        for _, b in pairs(tabButtons) do
-            b.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-            b.BorderColor3 = Color3.fromRGB(80, 0, 150)
-            b.TextColor3 = Color3.fromRGB(200, 170, 220)
-        end
-        btn.BackgroundColor3 = Color3.fromRGB(50, 0, 100)
-        btn.BorderColor3 = Color3.fromRGB(200, 0, 255)
-        btn.TextColor3 = Color3.fromRGB(255, 200, 255)
-    end)
-
-    return btn
+    return drop
 end
 
--- =====================================================
--- 6. ФУНКЦИИ
--- =====================================================
+-- ========== Функции чита ==========
 
--- FLY
-local function StartFly()
-    if flying then return end
-    flying = true
-    local char = Player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local hum = char:FindFirstChild("Humanoid")
-    if hum then hum.PlatformStand = true end
-    flyBodyVelocity = Instance.new("BodyVelocity")
-    flyBodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-    flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    flyBodyVelocity.Parent = root
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not flying or not root then flyConnection:Disconnect() return end
-        local move = Vector3.new(0, 0, 0)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + Vector3.new(0, 0, -1) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move + Vector3.new(0, 0, 1) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move + Vector3.new(-1, 0, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + Vector3.new(1, 0, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move + Vector3.new(0, -1, 0) end
-        if move.Magnitude > 0 then move = move.Unit * flySpeed end
-        flyBodyVelocity.Velocity = move
-    end)
-end
-
-local function StopFly()
-    flying = false
-    if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
-    if flyConnection then flyConnection:Disconnect() flyConnection = nil end
-    local char = Player.Character
-    if char then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then hum.PlatformStand = false end
-    end
-end
-
--- NOCLIP
-local function ToggleNoclip(state)
-    noclip = state
-    if noclip then
-        if noclipConnection then noclipConnection:Disconnect() end
-        noclipConnection = RunService.RenderStepped:Connect(function()
-            if not noclip then noclipConnection:Disconnect() return end
-            local char = Player.Character
-            if char then
-                for _, part in pairs(char:GetChildren()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
+-- Анти-лаг (отключает частицы, дождь, свет)
+local antiLag = false
+addButton("Anti-Lag (Toggle)", 10, function()
+    antiLag = not antiLag
+    if antiLag then
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                v.Enabled = false
             end
-        end)
+            if v:IsA("Light") or v:IsA("PointLight") or v:IsA("SpotLight") then
+                v.Enabled = false
+            end
+        end
+        game.Lighting.Brightness = 1.5
+        game.Lighting.OutdoorAmbient = Color3.fromRGB(150,150,150)
     else
-        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
-        local char = Player.Character
-        if char then
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-end
-
--- SPEED
-local function ToggleSpeed(state)
-    speedHack = state
-    if speedHack then
-        if speedConnection then speedConnection:Disconnect() end
-        speedConnection = RunService.RenderStepped:Connect(function()
-            if not speedHack then speedConnection:Disconnect() return end
-            local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
-            if hum then
-                hum.WalkSpeed = 16 * speedMultiplier
-                hum.JumpPower = 50 * speedMultiplier
-            end
-        end)
-    else
-        if speedConnection then speedConnection:Disconnect() speedConnection = nil end
-        local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = 16
-            hum.JumpPower = 50
-        end
-    end
-end
-
--- GOD MODE
-local function ToggleGodMode(state)
-    godMode = state
-    if godMode then
-        if godModeConnection then godModeConnection:Disconnect() end
-        godModeConnection = Player.CharacterAdded:Connect(function(char)
-            wait(0.1)
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.MaxHealth = math.huge
-                hum.Health = math.huge
-                hum.BreakJointsOnDeath = false
-            end
-        end)
-        local char = Player.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.MaxHealth = math.huge
-                hum.Health = math.huge
-                hum.BreakJointsOnDeath = false
-            end
-        end
-    else
-        if godModeConnection then godModeConnection:Disconnect() godModeConnection = nil end
-        local char = Player.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.MaxHealth = 100
-                hum.Health = 100
-                hum.BreakJointsOnDeath = true
-            end
-        end
-    end
-end
-
--- INFINITE JUMP
-local function ToggleInfiniteJump(state)
-    infiniteJump = state
-    if infiniteJump then
-        if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-        infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-            if infiniteJump then
-                local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
-                if hum then
-                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end
-        end)
-    else
-        if infiniteJumpConnection then infiniteJumpConnection:Disconnect() infiniteJumpConnection = nil end
-    end
-end
-
--- ANTI-KICK
-local function ToggleAntiKick(state)
-    antiKick = state
-    if antiKick then
-        if antiKickConnection then antiKickConnection:Disconnect() end
-        antiKickConnection = Player:WaitForChild("Kick"):Connect(function()
-            if antiKick then
-                wait(0.1)
-                Player.Character = Player.CharacterAdded:Wait()
-                wait(0.2)
-                local char = Player.Character
-                if char then
-                    local hum = char:FindFirstChild("Humanoid")
-                    if hum then
-                        hum.MaxHealth = math.huge
-                        hum.Health = math.huge
-                    end
-                end
-                pcall(function()
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
-                end)
-            end
-        end)
-    else
-        if antiKickConnection then
-            antiKickConnection:Disconnect()
-            antiKickConnection = nil
-        end
-    end
-end
-
--- =====================================================
--- 7. ВКЛАДКИ
--- =====================================================
-
--- MAIN
-local function TabMain()
-    ClearContent()
-    local y = 8
-
-    local h1 = CreateHeader("MAIN FUNCTIONS")
-    h1.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 33
-
-    local f1 = CreateToggle("FLY (WASD + Space/Shift)", function(state)
-        if state then StartFly() else StopFly() end
-    end)
-    f1.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 43
-
-    local f2 = CreateToggle("NOCLIP", ToggleNoclip)
-    f2.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 43
-
-    local f3 = CreateToggle("SPEED HACK", ToggleSpeed)
-    f3.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 43
-
-    local f4 = CreateToggle("GOD MODE", ToggleGodMode)
-    f4.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 43
-
-    local f5 = CreateToggle("INFINITE JUMP", ToggleInfiniteJump)
-    f5.Position = UDim2.new(0.05, 0, 0, y)
-end
-
--- PROTECTION
-local function TabProtection()
-    ClearContent()
-    local y = 8
-
-    local h1 = CreateHeader("PROTECTION")
-    h1.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 33
-
-    local f1 = CreateToggle("ANTI-KICK", ToggleAntiKick)
-    f1.Position = UDim2.new(0.05, 0, 0, y)
-end
-
--- SETTINGS
-local function TabSettings()
-    ClearContent()
-    local y = 8
-
-    local h1 = CreateHeader("SETTINGS")
-    h1.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 33
-
-    local resetBtn = CreateButton("RESET CHARACTER", function()
-        Player.Character = nil
-        Player.CharacterAdded:Wait()
-    end)
-    resetBtn.Position = UDim2.new(0.05, 0, 0, y)
-    y = y + 43
-
-    local closeBtn = CreateButton("CLOSE GUI", function()
-        ScreenGui:Destroy()
-    end)
-    closeBtn.Position = UDim2.new(0.05, 0, 0, y)
-end
-
--- =====================================================
--- 8. СИСТЕМА ПЕРЕКЛЮЧЕНИЯ
--- =====================================================
-local tabButtons = {}
-
-local function SwitchTab(tabName)
-    currentTab = tabName
-    if tabName == "MAIN" then TabMain()
-    elseif tabName == "PROTECTION" then TabProtection()
-    elseif tabName == "SETTINGS" then TabSettings()
-    end
-end
-
-local btn1 = CreateTabButton("MAIN", "MAIN")
-local btn2 = CreateTabButton("PROTECT", "PROTECTION")
-local btn3 = CreateTabButton("SETTINGS", "SETTINGS")
-
-tabButtons = {btn1, btn2, btn3}
-
-btn1.BackgroundColor3 = Color3.fromRGB(50, 0, 100)
-btn1.BorderColor3 = Color3.fromRGB(200, 0, 255)
-btn1.TextColor3 = Color3.fromRGB(255, 200, 255)
-SwitchTab("MAIN")
-
--- =====================================================
--- 9. АВТОВОССТАНОВЛЕНИЕ
--- =====================================================
-Player.CharacterAdded:Connect(function(char)
-    wait(0.5)
-    if godMode then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum.MaxHealth = math.huge
-            hum.Health = math.huge
-            hum.BreakJointsOnDeath = false
-        end
-    end
-    if noclip then
-        for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
-    if speedHack then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = 16 * speedMultiplier
-            hum.JumpPower = 50 * speedMultiplier
-        end
-    end
-    if flying then
-        wait(0.2)
-        StartFly()
+        -- восстановление (упрощённо)
+        game.Lighting.Brightness = 1
+        game.Lighting.OutdoorAmbient = Color3.fromRGB(0,0,0)
     end
 end)
 
--- =====================================================
--- 10. ВЫВОД
--- =====================================================
-print("==========================================")
-print("ROCKET ULTRA v9.1 LOADED")
-print("GUI should appear in the center")
-print("If not visible - check console for errors")
-print("==========================================")
+-- Анти-взрыв (отключает взрывы от игроков)
+addButton("Anti-Explosion", 60, function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Explosion") then
+            v:Destroy()
+        end
+    end
+    -- перехват новых взрывов
+    local conn
+    if not _G.antiExplosion then
+        _G.antiExplosion = true
+        conn = game:GetService("RunService").Heartbeat:Connect(function()
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Explosion") then
+                    v:Destroy()
+                end
+            end
+        end)
+    else
+        _G.antiExplosion = false
+        if conn then conn:Disconnect() end
+    end
+end)
 
--- =====================================================
--- КОНЕЦ
--- =====================================================
+-- Анти-кик (максимально агрессивный обход всех киков)
+addButton("Anti-Kick (ULTRA)", 110, function()
+    -- Блокируем стандартные кики
+    local lps = game:GetService("LocalPlayer")
+    local plrs = game:GetService("Players")
+    local ts = game:GetService("TeleportService")
+    local guiService = game:GetService("GuiService")
+
+    -- Перехват Kick
+    local oldKick = plrs.Kick
+    plrs.Kick = function() end
+
+    -- Блокировка Teleport (если кик через телепорт)
+    local oldTeleport = ts.Teleport
+    ts.Teleport = function() end
+
+    -- Блокировка GuiService кика (бан)
+    guiService.GuiEnabled = true
+
+    -- Обход через CoreGui
+    for _, v in pairs(player:GetChildren()) do
+        if v:IsA("ScreenGui") and v.Name == "RobloxGui" then
+            v:Destroy()
+        end
+    end
+
+    -- Перехват OnClientKick (если есть)
+    local remotes = game:GetDescendants()
+    for _, v in pairs(remotes) do
+        if v:IsA("RemoteEvent") and v.Name:lower():find("kick") then
+            v.OnClientEvent:Connect(function()
+                return
+            end)
+        end
+    end
+
+    -- Спам heartbeat чтобы не выкинуло по таймауту
+    game:GetService("RunService").Heartbeat:Connect(function()
+        -- ложная активность
+        player:GetMouse().X = player:GetMouse().X + 0.01
+    end)
+
+    -- Отключаем проверку античит-сервера (если есть)
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") and v.Name:lower():find("antihack") then
+            v.OnClientEvent:Connect(function() end)
+        end
+    end
+
+    player:Kick = function() end
+    game.Players.Kick = function() end
+end)
+
+-- Кик выбранного игрока (Blobman)
+local kickTarget = ""
+addButton("Kick Selected Player", 160, function()
+    local target = kickTarget
+    if target ~= "" then
+        local plr = game.Players:FindFirstChild(target)
+        if plr then
+            plr:Kick("Kicked by FTAP")
+        end
+    end
+end)
+
+-- Список игроков для выбора (обновляемый)
+local playerListBox = Instance.new("TextBox")
+playerListBox.Size = UDim2.new(1, -10, 0, 30)
+playerListBox.Position = UDim2.new(0, 5, 0, 210)
+playerListBox.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+playerListBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerListBox.Font = Enum.Font.Gotham
+playerListBox.TextSize = 16
+playerListBox.PlaceholderText = "Enter player name"
+playerListBox.Parent = scroll
+playerListBox:GetPropertyChangedSignal("Text"):Connect(function()
+    kickTarget = playerListBox.Text
+end)
+
+-- Анимации
+local animationFrame = Instance.new("Frame")
+animationFrame.Size = UDim2.new(1, -10, 0, 180)
+animationFrame.Position = UDim2.new(0, 5, 0, 250)
+animationFrame.BackgroundTransparency = 1
+animationFrame.Parent = scroll
+
+-- Выбор анимации дрочки
+local masturbateAnims = {"Slow", "Medium", "Fast", "Turbo"}
+local masturbateIntensity = 1
+addDropdown("Masturbation Intensity", 260, masturbateAnims, function(val)
+    local speed = 1
+    if val == "Slow" then speed = 0.5
+    elseif val == "Medium" then speed = 1
+    elseif val == "Fast" then speed = 2
+    elseif val == "Turbo" then speed = 4 end
+    masturbateIntensity = speed
+end)
+
+-- Кнопка "Play Masturbate"
+addButton("Play Masturbate Animation", 310, function()
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum then return end
+    -- Создаём анимацию движения руки (дрочка)
+    local animTrack = hum:LoadAnimation(Instance.new("Animation"))
+    animTrack:SetAttribute("Speed", masturbateIntensity)
+    -- Воспроизводим с движением руки
+    local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+    if arm then
+        local t = 0
+        game:GetService("RunService").Heartbeat:Connect(function(dt)
+            t = t + dt * masturbateIntensity
+            if arm and arm:IsA("BasePart") then
+                arm.CFrame = arm.CFrame * CFrame.Angles(0, 0, math.sin(t)*0.5)
+            end
+        end)
+    end
+end)
+
+-- Анимация "другой игрок строится в модельку члена"
+addButton("Transform Target into Dick Model", 360, function()
+    local targetName = playerListBox.Text
+    local target = game.Players:FindFirstChild(targetName)
+    if target and target.Character then
+        local char = target.Character
+        -- Строим примитивную модельку (член)
+        local model = Instance.new("Model")
+        model.Name = "DickModel"
+        local part = Instance.new("Part")
+        part.Size = Vector3.new(0.8, 2, 0.8)
+        part.Shape = Enum.PartType.Cylinder
+        part.BrickColor = BrickColor.new("Bright red")
+        part.Position = char.HumanoidRootPart.Position
+        part.Anchored = true
+        part.Parent = model
+        model.Parent = workspace
+        -- Удаляем старого персонажа и ставим модель
+        char:BreakJoints()
+        model:SetPrimaryPartCFrame(char.HumanoidRootPart.CFrame)
+        -- Привязываем камеру к модели
+        game.Workspace.CurrentCamera.CameraSubject = part
+    end
+end)
+
+-- Рэгдолл "лицом на паху"
+addButton("Ragdoll Face on Crotch", 410, function()
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then
+        hum.PlatformStand = true
+        hum.Sit = true
+        -- Поворачиваем лицом вниз, на пах
+        local root = char.HumanoidRootPart
+        if root then
+            root.CFrame = root.CFrame * CFrame.Angles(math.rad(90), 0, 0)
+        end
+        -- Замораживаем все части
+        for _, v in pairs(char:GetChildren()) do
+            if v:IsA("BasePart") then
+                v.Anchored = true
+            end
+        end
+    end
+end)
+
+-- Красивый интерфейс листания (уже есть ScrollingFrame)
+-- Добавляем индикатор страницы
+local pageIndicator = Instance.new("TextLabel")
+pageIndicator.Size = UDim2.new(1, 0, 0, 30)
+pageIndicator.Position = UDim2.new(0, 0, 1, -30)
+pageIndicator.BackgroundTransparency = 1
+pageIndicator.Text = "Page 1/1"
+pageIndicator.TextColor3 = Color3.fromRGB(200, 200, 200)
+pageIndicator.Font = Enum.Font.Gotham
+pageIndicator.TextSize = 14
+pageIndicator.Parent = mainFrame
+
+-- Также можно добавить кнопку скрытия/показа панели
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 60, 0, 30)
+toggleBtn.Position = UDim2.new(1, -70, 0, 5)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+toggleBtn.Text = "X"
+toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 18
+toggleBtn.Parent = mainFrame
+toggleBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
