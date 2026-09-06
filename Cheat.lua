@@ -1,8 +1,7 @@
 --[[
-    FTAP IMMORTAL v4.0
-    НЕУБИВАЕМАЯ ПАНЕЛЬ
-    Пересоздается после любого удаления
-    Работает через 5 разных систем защиты
+    FTAP IMMORTAL v5.0
+    Адаптировано для GitHub и Xeno
+    Добавлено: управление камерой от третьего лица (приближение/отдаление)
 --]]
 
 local player = game.Players.LocalPlayer
@@ -12,6 +11,58 @@ local players = game:GetService("Players")
 local teleportService = game:GetService("TeleportService")
 local guiService = game:GetService("GuiService")
 local userInputService = game:GetService("UserInputService")
+local camera = workspace.CurrentCamera
+
+-- =====================================================
+-- НОВАЯ ФУНКЦИЯ: Управление камерой от 3-го лица
+-- =====================================================
+local cameraControlActive = false
+local cameraDistance = 10
+local minCameraDistance = 2
+local maxCameraDistance = 30
+
+local function toggleCameraControl()
+    cameraControlActive = not cameraControlActive
+    if cameraControlActive then
+        camera.CameraType = Enum.CameraType.Custom
+        print("🔭 Режим камеры от 3-го лица АКТИВИРОВАН")
+    else
+        camera.CameraType = Enum.CameraType.Classic
+        print("🔭 Режим камеры от 3-го лица ОТКЛЮЧЕН")
+    end
+end
+
+-- Обработка колесика мыши для изменения дистанции
+userInputService.InputChanged:Connect(function(input, gameProcessed)
+    if not cameraControlActive or gameProcessed then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseWheel then
+        local delta = input.Position.Z -- Для Roblox это значение изменения колесика
+        cameraDistance = math.clamp(cameraDistance - delta * 0.5, minCameraDistance, maxCameraDistance)
+    end
+end)
+
+-- Обновление позиции камеры каждый кадр
+runService.RenderStepped:Connect(function()
+    if not cameraControlActive then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    -- Получаем направление взгляда
+    local lookVector = camera.CFrame.LookVector
+    local newPosition = rootPart.Position - lookVector * cameraDistance
+    
+    -- Плавное следование камеры
+    camera.CFrame = CFrame.new(newPosition, rootPart.Position)
+end)
+
+-- =====================================================
+-- ОСНОВНАЯ ПАНЕЛЬ (без изменений, но с добавлением кнопки)
+-- =====================================================
 
 -- ===== СИСТЕМА 1: ПЕРЕХВАТ УДАЛЕНИЯ =====
 local function protectFromDeletion()
@@ -28,22 +79,20 @@ end
 
 -- ===== СИСТЕМА 2: ПЕРЕСОЗДАНИЕ =====
 local function recreatePanel()
-    -- Удаляем старую панель если есть
     local oldGui = player.PlayerGui:FindFirstChild("FTAP_Panel")
     if oldGui then oldGui:Destroy() end
-    
-    -- ===== СОЗДАНИЕ GUI =====
+
     local gui = Instance.new("ScreenGui")
     gui.Name = "FTAP_Panel"
     gui.Parent = player:WaitForChild("PlayerGui")
     gui.Enabled = true
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
-    
+
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 450, 0, 700)
-    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -350)
+    mainFrame.Size = UDim2.new(0, 450, 0, 750)
+    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -375)
     mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
     mainFrame.BorderSizePixel = 0
     mainFrame.BackgroundTransparency = 0.02
@@ -51,8 +100,7 @@ local function recreatePanel()
     mainFrame.Draggable = true
     mainFrame.ZIndex = 9999
     mainFrame.Parent = gui
-    
-    -- Неоновый бордер
+
     local border = Instance.new("Frame")
     border.Size = UDim2.new(1, 4, 1, 4)
     border.Position = UDim2.new(0, -2, 0, -2)
@@ -60,19 +108,17 @@ local function recreatePanel()
     border.BackgroundTransparency = 0.7
     border.ZIndex = 9998
     border.Parent = mainFrame
-    
-    -- Заголовок
+
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 50)
     title.BackgroundColor3 = Color3.fromRGB(25, 25, 45)
-    title.Text = "🚀 FTAP IMMORTAL v4.0"
+    title.Text = "🚀 FTAP IMMORTAL v5.0"
     title.TextColor3 = Color3.fromRGB(255, 50, 150)
     title.Font = Enum.Font.GothamBold
     title.TextSize = 26
     title.ZIndex = 9999
     title.Parent = mainFrame
-    
-    -- Кнопка закрытия (только сворачивание)
+
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 40, 0, 40)
     closeBtn.Position = UDim2.new(1, -45, 0, 5)
@@ -86,19 +132,17 @@ local function recreatePanel()
     closeBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = not mainFrame.Visible
     end)
-    
-    -- Скроллинг
+
     local scroll = Instance.new("ScrollingFrame")
     scroll.Size = UDim2.new(1, -10, 1, -60)
     scroll.Position = UDim2.new(0, 5, 0, 55)
     scroll.BackgroundTransparency = 1
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 1100)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 1200)
     scroll.ScrollBarThickness = 12
     scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 128)
     scroll.ZIndex = 9999
     scroll.Parent = mainFrame
-    
-    -- ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+
     local function createButton(text, y, color, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 45)
@@ -111,7 +155,7 @@ local function recreatePanel()
         btn.ZIndex = 9999
         btn.Parent = scroll
         btn.MouseButton1Click:Connect(callback)
-        
+
         btn.MouseEnter:Connect(function()
             btn.BackgroundColor3 = Color3.fromRGB(70, 70, 110)
         end)
@@ -120,7 +164,7 @@ local function recreatePanel()
         end)
         return btn
     end
-    
+
     local function createSlider(text, y, min, max, default, callback)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -10, 0, 60)
@@ -128,7 +172,7 @@ local function recreatePanel()
         frame.BackgroundTransparency = 1
         frame.ZIndex = 9999
         frame.Parent = scroll
-        
+
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(0.6, 0, 0, 25)
         label.Text = text .. ": " .. tostring(default)
@@ -138,7 +182,7 @@ local function recreatePanel()
         label.BackgroundTransparency = 1
         label.ZIndex = 9999
         label.Parent = frame
-        
+
         local slider = Instance.new("UISlider")
         slider.Size = UDim2.new(0.8, 0, 0, 22)
         slider.Position = UDim2.new(0, 0, 0, 30)
@@ -148,16 +192,14 @@ local function recreatePanel()
         slider.BackgroundColor3 = Color3.fromRGB(255, 0, 128)
         slider.ZIndex = 9999
         slider.Parent = frame
-        
-        local value = slider.Value
+
         slider.Changed:Connect(function(val)
-            value = val
             label.Text = text .. ": " .. string.format("%.1f", val)
             callback(val)
         end)
         return slider
     end
-    
+
     local function createDropdown(text, y, items, callback)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -10, 0, 45)
@@ -165,7 +207,7 @@ local function recreatePanel()
         frame.BackgroundTransparency = 1
         frame.ZIndex = 9999
         frame.Parent = scroll
-        
+
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(0.4, 0, 1, 0)
         label.Text = text
@@ -175,7 +217,7 @@ local function recreatePanel()
         label.BackgroundTransparency = 1
         label.ZIndex = 9999
         label.Parent = frame
-        
+
         local dropdown = Instance.new("TextButton")
         dropdown.Size = UDim2.new(0.5, 0, 1, 0)
         dropdown.Position = UDim2.new(0.45, 0, 0, 0)
@@ -186,7 +228,7 @@ local function recreatePanel()
         dropdown.TextSize = 16
         dropdown.ZIndex = 9999
         dropdown.Parent = frame
-        
+
         local index = 1
         dropdown.MouseButton1Click:Connect(function()
             index = index % #items + 1
@@ -195,8 +237,8 @@ local function recreatePanel()
         end)
         return dropdown
     end
-    
-    -- ===== ПЕРЕМЕННЫЕ =====
+
+    -- ===== ПЕРЕМЕННЫЕ ДЛЯ ФУНКЦИЙ =====
     local antiLagActive = false
     local antiExplosionActive = false
     local antiKickActive = false
@@ -204,9 +246,9 @@ local function recreatePanel()
     local masturbateSpeed = 1
     local masturbateConnections = {}
     local explosionConnection = nil
-    
-    -- ===== ФУНКЦИИ =====
-    
+
+    -- ===== ФУНКЦИИ ПАНЕЛИ =====
+
     -- 1. Анти-лаг
     createButton("🔧 Anti-Lag (Toggle)", 10, Color3.fromRGB(40, 80, 180), function()
         antiLagActive = not antiLagActive
@@ -230,7 +272,7 @@ local function recreatePanel()
             lighting.GlobalShadows = true
         end
     end)
-    
+
     -- 2. Анти-взрыв
     createButton("💥 Anti-Explosion (Toggle)", 65, Color3.fromRGB(180, 50, 50), function()
         antiExplosionActive = not antiExplosionActive
@@ -254,30 +296,29 @@ local function recreatePanel()
             end
         end
     end)
-    
+
     -- 3. Анти-кик УЛЬТРА
     createButton("🛡️ Anti-Kick (ULTRA)", 120, Color3.fromRGB(40, 180, 80), function()
         antiKickActive = not antiKickActive
         if antiKickActive then
-            -- Полная блокировка всех методов кика
             local function blockAllKicks()
                 local oldPlayersKick = players.Kick
                 players.Kick = function() end
-                
+
                 local oldPlayerKick = player.Kick
                 player.Kick = function() end
-                
+
                 local oldTeleport = teleportService.Teleport
                 teleportService.Teleport = function() end
-                
+
                 guiService.GuiEnabled = true
-                
+
                 for _, v in pairs(player:GetChildren()) do
                     if v:IsA("ScreenGui") and v.Name == "RobloxGui" then
                         v:Destroy()
                     end
                 end
-                
+
                 for _, v in pairs(game:GetDescendants()) do
                     if v:IsA("RemoteEvent") then
                         local name = v.Name:lower()
@@ -290,12 +331,12 @@ local function recreatePanel()
                         v.InvokeServer = function() end
                     end
                 end
-                
+
                 runService.Heartbeat:Connect(function()
                     local mouse = player:GetMouse()
                     mouse.X = mouse.X + 0.001
                 end)
-                
+
                 local coreGui = game:GetService("CoreGui")
                 for _, v in pairs(coreGui:GetChildren()) do
                     if v:IsA("ScreenGui") then
@@ -303,9 +344,9 @@ local function recreatePanel()
                     end
                 end
             end
-            
+
             blockAllKicks()
-            
+
             spawn(function()
                 while antiKickActive do
                     wait(5)
@@ -314,7 +355,7 @@ local function recreatePanel()
             end)
         end
     end)
-    
+
     -- 4. Кик игрока
     local kickInput = Instance.new("TextBox")
     kickInput.Size = UDim2.new(1, -10, 0, 38)
@@ -329,16 +370,16 @@ local function recreatePanel()
     kickInput:GetPropertyChangedSignal("Text"):Connect(function()
         kickTarget = kickInput.Text
     end)
-    
+
     createButton("👢 Kick Selected Player", 228, Color3.fromRGB(200, 40, 40), function()
         if kickTarget ~= "" then
             local target = players:FindFirstChild(kickTarget)
             if target then
-                target:Kick("Kicked by FTAP IMMORTAL v4.0")
+                target:Kick("Kicked by FTAP IMMORTAL v5.0")
             end
         end
     end)
-    
+
     -- 5. Анимации дрочки
     createDropdown("💦 Masturbation Speed", 286, {"Slow", "Medium", "Fast", "Turbo", "INSANE"}, function(val)
         if val == "Slow" then masturbateSpeed = 0.3
@@ -347,18 +388,18 @@ local function recreatePanel()
         elseif val == "Turbo" then masturbateSpeed = 3.0
         elseif val == "INSANE" then masturbateSpeed = 6.0 end
     end)
-    
+
     createButton("🎭 Start Masturbate", 344, Color3.fromRGB(200, 80, 180), function()
         local char = player.Character
         if not char then return end
         local hum = char:FindFirstChild("Humanoid")
         if not hum then return end
-        
+
         for _, conn in pairs(masturbateConnections) do
             conn:Disconnect()
         end
         masturbateConnections = {}
-        
+
         local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
         if arm and arm:IsA("BasePart") then
             local t = 0
@@ -371,7 +412,7 @@ local function recreatePanel()
             table.insert(masturbateConnections, conn)
         end
     end)
-    
+
     -- 6. Трансформация в член
     createButton("🍆 Transform to Dick Model", 402, Color3.fromRGB(180, 60, 200), function()
         local targetName = kickInput.Text
@@ -382,7 +423,7 @@ local function recreatePanel()
             if root then
                 local model = Instance.new("Model")
                 model.Name = "DickModel"
-                
+
                 local part = Instance.new("Part")
                 part.Size = Vector3.new(0.8, 2.8, 0.8)
                 part.Shape = Enum.PartType.Cylinder
@@ -390,7 +431,7 @@ local function recreatePanel()
                 part.CFrame = root.CFrame
                 part.Anchored = true
                 part.Parent = model
-                
+
                 local part2 = Instance.new("Part")
                 part2.Size = Vector3.new(1.4, 0.8, 1.4)
                 part2.Shape = Enum.PartType.Ball
@@ -398,7 +439,7 @@ local function recreatePanel()
                 part2.CFrame = root.CFrame * CFrame.new(0, 1.6, 0)
                 part2.Anchored = true
                 part2.Parent = model
-                
+
                 local part3 = Instance.new("Part")
                 part3.Size = Vector3.new(0.6, 0.4, 0.6)
                 part3.Shape = Enum.PartType.Ball
@@ -406,14 +447,14 @@ local function recreatePanel()
                 part3.CFrame = root.CFrame * CFrame.new(0, -1.6, 0)
                 part3.Anchored = true
                 part3.Parent = model
-                
+
                 model.Parent = workspace
                 char:BreakJoints()
                 workspace.CurrentCamera.CameraSubject = part
             end
         end
     end)
-    
+
     -- 7. Рэгдолл
     createButton("😩 Ragdoll Face on Crotch", 460, Color3.fromRGB(150, 80, 60), function()
         local char = player.Character
@@ -433,7 +474,7 @@ local function recreatePanel()
             end
         end
     end)
-    
+
     -- 8. Стоп
     createButton("⏹️ Stop All Animations", 518, Color3.fromRGB(80, 80, 80), function()
         for _, conn in pairs(masturbateConnections) do
@@ -454,7 +495,7 @@ local function recreatePanel()
             end
         end
     end)
-    
+
     -- 9. Скрыть всех игроков
     createButton("👻 Hide All Players", 576, Color3.fromRGB(80, 40, 120), function()
         for _, plr in pairs(players:GetPlayers()) do
@@ -470,7 +511,7 @@ local function recreatePanel()
             end
         end
     end)
-    
+
     -- 10. Показать всех игроков
     createButton("👀 Show All Players", 632, Color3.fromRGB(40, 120, 80), function()
         for _, plr in pairs(players:GetPlayers()) do
@@ -486,32 +527,36 @@ local function recreatePanel()
             end
         end
     end)
-    
-    -- 11. Кнопка пересоздания (на всякий случай)
-    createButton("🔄 Force Recreate Panel", 688, Color3.fromRGB(200, 100, 0), function()
+
+    -- 11. НОВАЯ КНОПКА: Управление камерой
+    createButton("🔭 Toggle 3rd Person Camera", 688, Color3.fromRGB(0, 150, 200), function()
+        toggleCameraControl()
+    end)
+
+    -- 12. Кнопка пересоздания
+    createButton("🔄 Force Recreate Panel", 744, Color3.fromRGB(200, 100, 0), function()
         recreatePanel()
     end)
-    
+
     -- Индикатор
     local pageIndicator = Instance.new("TextLabel")
     pageIndicator.Size = UDim2.new(1, 0, 0, 30)
     pageIndicator.Position = UDim2.new(0, 0, 1, -30)
     pageIndicator.BackgroundTransparency = 1
-    pageIndicator.Text = "📄 FTAP IMMORTAL v4.0 | POWERED BY ROCKET WAY"
+    pageIndicator.Text = "📄 FTAP IMMORTAL v5.0 | POWERED BY ROCKET WAY"
     pageIndicator.TextColor3 = Color3.fromRGB(255, 50, 150)
     pageIndicator.Font = Enum.Font.GothamBold
     pageIndicator.TextSize = 14
     pageIndicator.ZIndex = 9999
     pageIndicator.Parent = mainFrame
-    
-    -- Защита от удаления для новой панели
+
     protectFromDeletion()
-    
-    print("🚀 FTAP IMMORTAL v4.0 СОЗДАНА!")
+
+    print("🚀 FTAP IMMORTAL v5.0 СОЗДАНА!")
     return gui
 end
 
--- ===== СИСТЕМА 3: ПОСТОЯННЫЙ МОНИТОРИНГ =====
+-- ===== СИСТЕМЫ ЗАЩИТЫ =====
 local function monitorPanel()
     spawn(function()
         while true do
@@ -525,7 +570,6 @@ local function monitorPanel()
     end)
 end
 
--- ===== СИСТЕМА 4: ЗАЩИТА ОТ ОТКЛЮЧЕНИЯ =====
 local function protectFromDisable()
     spawn(function()
         while true do
@@ -538,7 +582,6 @@ local function protectFromDisable()
     end)
 end
 
--- ===== СИСТЕМА 5: ПЕРЕХВАТ ПОТОКОВ =====
 local function hijackThreads()
     local oldSpawn = spawn
     spawn = function(func)
@@ -557,18 +600,14 @@ local function hijackThreads()
     end
 end
 
--- ===== ЗАПУСК ВСЕХ СИСТЕМ =====
-print("🚀 Активация FTAP IMMORTAL v4.0...")
+-- ===== ЗАПУСК =====
+print("🚀 Активация FTAP IMMORTAL v5.0...")
 
--- Создаем первую панель
 recreatePanel()
-
--- Запускаем мониторинг
 monitorPanel()
 protectFromDisable()
 hijackThreads()
 
--- Дополнительная защита через Heartbeat
 runService.Heartbeat:Connect(function()
     local gui = player.PlayerGui:FindFirstChild("FTAP_Panel")
     if gui then
@@ -579,4 +618,4 @@ runService.Heartbeat:Connect(function()
     end
 end)
 
-print("🚀 FTAP IMMORTAL v4.0 АКТИВИРОВАНА НАВСЕГДА!")
+print("🚀 FTAP IMMORTAL v5.0 АКТИВИРОВАНА НАВСЕГДА!")
