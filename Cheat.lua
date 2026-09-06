@@ -1,7 +1,7 @@
 -- =====================================================
--- ROCKET ULTRA v7.1
--- С ПРОКРУТКОЙ (SCROLLING) МЕНЮ
--- АНТИ-КИК + ГРАБ С АНИМАЦИЕЙ
+-- ROCKET ULTRA v8.0
+-- ФИНАЛЬНАЯ ВЕРСИЯ С ПРОКРУТКОЙ
+-- ВСЕ ФУНКЦИИ РАБОТАЮТ
 -- =====================================================
 
 -- 1. ОСНОВНЫЕ СЕРВИСЫ
@@ -12,9 +12,9 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
 
 -- 2. ПРОВЕРКА ПЕРСОНАЖА
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -22,7 +22,7 @@ local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- =====================================================
--- 3. СОЗДАНИЕ ГУИ С ПРОКРУТКОЙ
+-- 3. СОЗДАНИЕ ГУИ
 -- =====================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ROCKET_GUI"
@@ -30,11 +30,11 @@ ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- ГЛАВНОЕ ОКНО (БОЛЬШЕ, ЧТОБЫ ПОМЕСТИТЬ ВСЁ)
+-- ГЛАВНОЕ ОКНО
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 450, 0, 550)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -275)
+MainFrame.Size = UDim2.new(0, 420, 0, 520)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -260)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 0, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 2
@@ -49,7 +49,7 @@ Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
 Title.BorderColor3 = Color3.fromRGB(150, 0, 255)
-Title.Text = "ROCKET ULTRA v7.1"
+Title.Text = "ROCKET ULTRA v8.0"
 Title.TextColor3 = Color3.fromRGB(200, 100, 255)
 Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
@@ -65,10 +65,12 @@ CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseBtn.TextScaled = true
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
 -- =====================================================
--- 4. СКРОЛЛИНГ-ФРЕЙМ (ОСНОВНАЯ ПРОКРУТКА)
+-- 4. СКРОЛЛИНГ-ФРЕЙМ (ПРОКРУТКА)
 -- =====================================================
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Parent = MainFrame
@@ -78,14 +80,12 @@ ScrollFrame.BackgroundColor3 = Color3.fromRGB(5, 0, 10)
 ScrollFrame.BackgroundTransparency = 0.5
 ScrollFrame.BorderColor3 = Color3.fromRGB(100, 0, 200)
 ScrollFrame.BorderSizePixel = 1
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- АВТОМАТИЧЕСКИ РАСШИРЯЕТСЯ
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollFrame.ScrollBarThickness = 6
 ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 0, 255)
 ScrollFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
-ScrollFrame.ScrollBarImageTransparency = 0.3
 ScrollFrame.MouseWheelScrollIncrement = 15
 
--- UIListLayout ДЛЯ АВТОМАТИЧЕСКОГО РАСПОЛОЖЕНИЯ
 local UIList = Instance.new("UIListLayout")
 UIList.Parent = ScrollFrame
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -93,7 +93,7 @@ UIList.Padding = UDim.new(0, 5)
 UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 -- =====================================================
--- 5. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ КНОПОК
+-- 5. ФУНКЦИИ ДЛЯ СОЗДАНИЯ ЭЛЕМЕНТОВ
 -- =====================================================
 local function CreateButton(text, callback)
     local btn = Instance.new("TextButton")
@@ -107,8 +107,6 @@ local function CreateButton(text, callback)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamSemibold
     btn.MouseButton1Click:Connect(callback)
-    
-    -- ЭФФЕКТ ПРИ НАВЕДЕНИИ
     btn.MouseEnter:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
         btn.BorderColor3 = Color3.fromRGB(200, 0, 255)
@@ -131,7 +129,6 @@ local function CreateToggle(text, callback)
     btn.TextColor3 = Color3.fromRGB(220, 150, 255)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamSemibold
-    
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
@@ -139,7 +136,6 @@ local function CreateToggle(text, callback)
         btn.BorderColor3 = state and Color3.fromRGB(0, 200, 50) or Color3.fromRGB(120, 0, 255)
         callback(state)
     end)
-    
     btn.MouseEnter:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
         btn.BorderColor3 = Color3.fromRGB(200, 0, 255)
@@ -663,7 +659,6 @@ end
 -- 8. СОЗДАНИЕ КНОПОК В ГУИ (С ПРОКРУТКОЙ)
 -- =====================================================
 
--- РАЗДЕЛИТЕЛИ ДЛЯ ГРУППИРОВКИ
 CreateSeparator("MAIN FUNCTIONS")
 
 CreateToggle("FLY (WASD + Space/Shift)", function(state)
@@ -724,6 +719,10 @@ CreateSeparator("UTILITY")
 CreateButton("RESET CHARACTER", function()
     Player.Character = nil
     Player.CharacterAdded:Wait()
+end)
+
+CreateButton("CLOSE GUI", function()
+    ScreenGui:Destroy()
 end)
 
 -- =====================================================
@@ -794,7 +793,7 @@ end
 -- 11. ВЫВОД
 -- =====================================================
 print("==========================================")
-print("ROCKET ULTRA v7.1 LOADED")
+print("ROCKET ULTRA v8.0 LOADED")
 print("SCROLLING MENU - USE MOUSE WHEEL")
 print("ANTI-KICK + GRAB FACE TO CROTCH")
 print("==========================================")
