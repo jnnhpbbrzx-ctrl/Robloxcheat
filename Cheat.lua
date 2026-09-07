@@ -1,309 +1,907 @@
--- ==============================================================================
--- ULTIMATE WINDOWS CLASSIC HUB (ROBLOX LUA SCRIPT)
--- Обновленная версия с улучшенным стилем под интерфейс игры
--- ==============================================================================
+--[[
+    ROCKET ADMIN PANEL
+    Single-file Roblox Studio admin panel
+    Place this LocalScript in StarterPlayerScripts.
+
+    Server-side actions should be validated on the server.
+]]
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
+
 local LocalPlayer = Players.LocalPlayer
 
--- STREAMING_CHUNK:Initializing GUI container...
-if LocalPlayer.PlayerGui:FindFirstChild("UltimateWindowsHub") then
-LocalPlayer.PlayerGui.UltimateWindowsHub:Destroy()
+----------------------------------------------------------------
+-- CONFIG
+----------------------------------------------------------------
+
+local Config = {
+    AdminUserIds = {
+        [123456789] = true, -- CHANGE THIS
+    },
+
+    Size = Vector2.new(900, 560),
+
+    Colors = {
+        Background = Color3.fromRGB(13, 14, 18),
+        Panel = Color3.fromRGB(18, 19, 24),
+        Panel2 = Color3.fromRGB(23, 24, 30),
+        Element = Color3.fromRGB(28, 30, 37),
+
+        Text = Color3.fromRGB(235, 237, 242),
+        Muted = Color3.fromRGB(140, 144, 155),
+
+        Accent = Color3.fromRGB(126, 92, 255),
+        AccentDark = Color3.fromRGB(91, 65, 190),
+
+        Danger = Color3.fromRGB(220, 75, 85),
+        Success = Color3.fromRGB(75, 190, 125),
+    }
+}
+
+----------------------------------------------------------------
+-- ADMIN CHECK
+----------------------------------------------------------------
+
+if not Config.AdminUserIds[LocalPlayer.UserId] then
+    return
 end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "UltimateWindowsHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 999999999
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+----------------------------------------------------------------
+-- REMOTE
+----------------------------------------------------------------
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 560, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-MainFrame.BackgroundTransparency = 0.05
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+local Remote = ReplicatedStorage:FindFirstChild("RocketAdmin")
 
--- STREAMING_CHUNK:Styling top bar and title...
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 35)
-TopBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-TopBar.BorderSizePixel = 0
-TopBar.Parent = MainFrame
+if not Remote then
+    Remote = Instance.new("RemoteEvent")
+    Remote.Name = "RocketAdmin"
+    Remote.Parent = ReplicatedStorage
+end
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 1, 0)
-Title.Position = UDim2.new(0, 12, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "Твои игрушки / Панель управления"
-Title.TextColor3 = Color3.fromRGB(240, 240, 240)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.TextSize = 16
-Title.Parent = TopBar
+----------------------------------------------------------------
+-- HELPERS
+----------------------------------------------------------------
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 28, 0, 28)
-CloseBtn.Position = UDim2.new(1, -34, 0, 3.5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-CloseBtn.Text = "×"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 18
-CloseBtn.Parent = TopBar
+local function New(className, properties, parent)
+    local object = Instance.new(className)
 
-CloseBtn.MouseButton1Click:Connect(function()
-MainFrame.Visible = false
-end)
-
--- STREAMING_CHUNK:Creating tab system...
-local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 0, 42)
-TabContainer.Position = UDim2.new(0, 0, 0, 35)
-TabContainer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-TabContainer.BorderSizePixel = 0
-TabContainer.Parent = MainFrame
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.FillDirection = Enum.FillDirection.Horizontal
-UIListLayout.Parent = TabContainer
-
-local PagesContainer = Instance.new("Frame")
-PagesContainer.Size = UDim2.new(1, 0, 1, -77)
-PagesContainer.Position = UDim2.new(0, 0, 0, 77)
-PagesContainer.BackgroundTransparency = 1
-PagesContainer.Parent = MainFrame
-
-local tabs = {}
-local pages = {}
-
-local function CreateTab(iconName, tabIndex)
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(0, 140, 1, 0)
-btn.BackgroundColor3 = (tabIndex == 1) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
-btn.Text = iconName
-btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-btn.Font = Enum.Font.SourceSansBold
-btn.TextSize = 14
-btn.Parent = TabContainer
-
-local page = Instance.new("ScrollingFrame")
-page.Size = UDim2.new(1, 0, 1, 0)
-page.Position = UDim2.new(0, 0, 0, 0)
-page.BackgroundTransparency = 1
-page.CanvasSize = UDim2.new(0, 0, 0, 350)
-page.ScrollBarThickness = 6
-page.Visible = (tabIndex == 1)
-page.Parent = PagesContainer
-
-table.insert(tabs, btn)
-table.insert(pages, page)
-
-btn.MouseButton1Click:Connect(function()
-    for i, tBtn in ipairs(tabs) do
-        TweenService:Create(tBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-        pages[i].Visible = false
+    for property, value in pairs(properties or {}) do
+        object[property] = value
     end
-    TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
-    page.Visible = true
+
+    object.Parent = parent
+
+    return object
+end
+
+local function Corner(parent, radius)
+    return New("UICorner", {
+        CornerRadius = UDim.new(0, radius or 8)
+    }, parent)
+end
+
+local function Stroke(parent, color, transparency)
+    return New("UIStroke", {
+        Color = color or Config.Colors.Element,
+        Transparency = transparency or 0,
+        Thickness = 1
+    }, parent)
+end
+
+local function Tween(object, properties, duration)
+    local tween = TweenService:Create(
+        object,
+        TweenInfo.new(
+            duration or 0.18,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        properties
+    )
+
+    tween:Play()
+
+    return tween
+end
+
+----------------------------------------------------------------
+-- GUI
+----------------------------------------------------------------
+
+local Gui = New("ScreenGui", {
+    Name = "RocketAdmin",
+    ResetOnSpawn = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+}, LocalPlayer:WaitForChild("PlayerGui"))
+
+----------------------------------------------------------------
+-- MAIN
+----------------------------------------------------------------
+
+local Main = New("Frame", {
+    Size = UDim2.fromOffset(Config.Size.X, Config.Size.Y),
+    Position = UDim2.new(0.5, -Config.Size.X / 2, 0.5, -Config.Size.Y / 2),
+    BackgroundColor3 = Config.Colors.Background,
+    BorderSizePixel = 0,
+    ClipsDescendants = true
+}, Gui)
+
+Corner(Main, 14)
+Stroke(Main, Color3.fromRGB(45, 47, 57))
+
+----------------------------------------------------------------
+-- SIDEBAR
+----------------------------------------------------------------
+
+local Sidebar = New("Frame", {
+    Size = UDim2.new(0, 64, 1, 0),
+    BackgroundColor3 = Config.Colors.Panel,
+    BorderSizePixel = 0
+}, Main)
+
+local SidebarLayout = New("UIListLayout", {
+    Padding = UDim.new(0, 8),
+    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+    SortOrder = Enum.SortOrder.LayoutOrder
+}, Sidebar)
+
+New("UIPadding", {
+    PaddingTop = UDim.new(0, 18),
+    PaddingBottom = UDim.new(0, 18)
+}, Sidebar)
+
+----------------------------------------------------------------
+-- CONTENT
+----------------------------------------------------------------
+
+local Content = New("Frame", {
+    Size = UDim2.new(1, -64, 1, 0),
+    Position = UDim2.new(0, 64, 0, 0),
+    BackgroundTransparency = 1
+}, Main)
+
+----------------------------------------------------------------
+-- HEADER
+----------------------------------------------------------------
+
+local Header = New("Frame", {
+    Size = UDim2.new(1, 0, 0, 64),
+    BackgroundTransparency = 1
+}, Content)
+
+local HeaderTitle = New("TextLabel", {
+    Position = UDim2.fromOffset(24, 17),
+    Size = UDim2.fromOffset(400, 30),
+    BackgroundTransparency = 1,
+    Text = "Players",
+    TextColor3 = Config.Colors.Text,
+    TextSize = 20,
+    Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Header)
+
+----------------------------------------------------------------
+-- CONTENT CONTAINER
+----------------------------------------------------------------
+
+local PageContainer = New("Frame", {
+    Position = UDim2.fromOffset(18, 64),
+    Size = UDim2.new(1, -36, 1, -82),
+    BackgroundTransparency = 1
+}, Content)
+
+----------------------------------------------------------------
+-- PAGES
+----------------------------------------------------------------
+
+local Pages = {}
+
+local function CreatePage(name)
+    local page = New("Frame", {
+        Name = name,
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Visible = false
+    }, PageContainer)
+
+    Pages[name] = page
+
+    return page
+end
+
+local function ShowPage(name)
+    for pageName, page in pairs(Pages) do
+        page.Visible = pageName == name
+    end
+
+    HeaderTitle.Text = name
+end
+
+----------------------------------------------------------------
+-- SIDEBAR BUTTON
+----------------------------------------------------------------
+
+local CurrentPage
+
+local function SidebarButton(icon, pageName)
+    local Button = New("TextButton", {
+        Size = UDim2.fromOffset(42, 42),
+        BackgroundColor3 = Config.Colors.Element,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Text = icon,
+        TextColor3 = Config.Colors.Muted,
+        TextSize = 18,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false,
+        LayoutOrder = #Sidebar:GetChildren()
+    }, Sidebar)
+
+    Corner(Button, 9)
+
+    Button.MouseEnter:Connect(function()
+        if CurrentPage ~= pageName then
+            Tween(Button, {
+                BackgroundTransparency = 0,
+                TextColor3 = Config.Colors.Text
+            })
+        end
+    end)
+
+    Button.MouseLeave:Connect(function()
+        if CurrentPage ~= pageName then
+            Tween(Button, {
+                BackgroundTransparency = 1,
+                TextColor3 = Config.Colors.Muted
+            })
+        end
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+
+        CurrentPage = pageName
+
+        for _, child in ipairs(Sidebar:GetChildren()) do
+            if child:IsA("TextButton") then
+                Tween(child, {
+                    BackgroundTransparency = child == Button and 0 or 1,
+                    TextColor3 = child == Button
+                        and Config.Colors.Text
+                        or Config.Colors.Muted
+                })
+            end
+        end
+
+        ShowPage(pageName)
+    end)
+
+    return Button
+end
+
+----------------------------------------------------------------
+-- PLAYERS PAGE
+----------------------------------------------------------------
+
+local PlayersPage = CreatePage("Players")
+
+local PlayerList = New("ScrollingFrame", {
+    Size = UDim2.new(0.42, -8, 1, 0),
+    BackgroundColor3 = Config.Colors.Panel,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = Config.Colors.Accent,
+    CanvasSize = UDim2.new()
+}, PlayersPage)
+
+Corner(PlayerList, 10)
+
+local PlayerLayout = New("UIListLayout", {
+    Padding = UDim.new(0, 6),
+    SortOrder = Enum.SortOrder.LayoutOrder
+}, PlayerList)
+
+New("UIPadding", {
+    PaddingTop = UDim.new(0, 10),
+    PaddingBottom = UDim.new(0, 10),
+    PaddingLeft = UDim.new(0, 10),
+    PaddingRight = UDim.new(0, 10)
+}, PlayerList)
+
+local SelectedPlayer = nil
+
+local Details = New("Frame", {
+    Position = UDim2.new(0.42, 8, 0, 0),
+    Size = UDim2.new(0.58, -8, 1, 0),
+    BackgroundColor3 = Config.Colors.Panel,
+    BorderSizePixel = 0
+}, PlayersPage)
+
+Corner(Details, 10)
+
+local SelectedName = New("TextLabel", {
+    Position = UDim2.fromOffset(18, 16),
+    Size = UDim2.new(1, -36, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "No player selected",
+    TextColor3 = Config.Colors.Text,
+    TextSize = 18,
+    Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Details)
+
+local SelectedStatus = New("TextLabel", {
+    Position = UDim2.fromOffset(18, 48),
+    Size = UDim2.new(1, -36, 0, 22),
+    BackgroundTransparency = 1,
+    Text = "Select a player from the list",
+    TextColor3 = Config.Colors.Muted,
+    TextSize = 13,
+    Font = Enum.Font.Gotham
+}, Details)
+
+local Actions = New("Frame", {
+    Position = UDim2.fromOffset(18, 88),
+    Size = UDim2.new(1, -36, 1, -106),
+    BackgroundTransparency = 1
+}, Details)
+
+New("UIGridLayout", {
+    CellSize = UDim2.new(0.48, 0, 0, 42),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, Actions)
+
+local function ActionButton(text, callback, danger)
+    local Button = New("TextButton", {
+        BackgroundColor3 = danger
+            and Config.Colors.Danger
+            or Config.Colors.Element,
+
+        Text = text,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        AutoButtonColor = false,
+        BorderSizePixel = 0
+    }, Actions)
+
+    Corner(Button, 8)
+
+    Button.MouseEnter:Connect(function()
+        Tween(Button, {
+            BackgroundColor3 = danger
+                and Color3.fromRGB(240, 85, 95)
+                or Config.Colors.Accent
+        })
+    end)
+
+    Button.MouseLeave:Connect(function()
+        Tween(Button, {
+            BackgroundColor3 = danger
+                and Config.Colors.Danger
+                or Config.Colors.Element
+        })
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        if SelectedPlayer then
+            callback(SelectedPlayer)
+        end
+    end)
+
+    return Button
+end
+
+ActionButton("Reset", function(target)
+    Remote:FireServer("Reset", target.UserId)
 end)
 
-return page
+ActionButton("Bring", function(target)
+    Remote:FireServer("Bring", target.UserId)
+end)
 
+ActionButton("Teleport", function(target)
+    Remote:FireServer("Teleport", target.UserId)
+end)
 
+ActionButton("Freeze", function(target)
+    Remote:FireServer("Freeze", target.UserId, true)
+end)
+
+ActionButton("Unfreeze", function(target)
+    Remote:FireServer("Freeze", target.UserId, false)
+end)
+
+ActionButton("Kill", function(target)
+    Remote:FireServer("Kill", target.UserId)
+end, true)
+
+ActionButton("Respawn", function(target)
+    Remote:FireServer("Respawn", target.UserId)
+end)
+
+ActionButton("Spectate", function(target)
+    Remote:FireServer("Spectate", target.UserId)
+end)
+
+----------------------------------------------------------------
+-- PLAYER LIST
+----------------------------------------------------------------
+
+local function ClearPlayerList()
+    for _, child in ipairs(PlayerList:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
 end
 
-local Page1 = CreateTab("🎯 Таргет", 1)
-local Page2 = CreateTab("🛡️ Защита", 2)
-local Page3 = CreateTab("👁️ Детектор", 3)
-local Page4 = CreateTab("⚙️ Разное", 4)
+local function CreatePlayerEntry(player)
+    local Button = New("TextButton", {
+        Size = UDim2.new(1, 0, 0, 48),
+        BackgroundColor3 = Config.Colors.Element,
+        Text = "",
+        AutoButtonColor = false,
+        BorderSizePixel = 0
+    }, PlayerList)
 
--- STREAMING_CHUNK:Populating Tab 1 contents...
-local SelectedTargetName = nil
+    Corner(Button, 8)
 
-local TargetTitle = Instance.new("TextLabel")
-TargetTitle.Size = UDim2.new(1, -24, 0, 24)
-TargetTitle.Position = UDim2.new(0, 12, 0, 12)
-TargetTitle.BackgroundTransparency = 1
-TargetTitle.Text = "Выберите игрока для взаимодействия:"
-TargetTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-TargetTitle.Font = Enum.Font.SourceSansBold
-TargetTitle.TextSize = 14
-TargetTitle.TextXAlignment = Enum.TextXAlignment.Left
-TargetTitle.Parent = Page1
+    local Name = New("TextLabel", {
+        Position = UDim2.fromOffset(12, 6),
+        Size = UDim2.new(1, -24, 0, 19),
+        BackgroundTransparency = 1,
+        Text = player.DisplayName,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Button)
 
-local PlayersScroll = Instance.new("ScrollingFrame")
-PlayersScroll.Size = UDim2.new(1, -24, 0, 140)
-PlayersScroll.Position = UDim2.new(0, 12, 0, 42)
-PlayersScroll.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-PlayersScroll.BorderSizePixel = 1
-PlayersScroll.Parent = Page1
+    local Username = New("TextLabel", {
+        Position = UDim2.fromOffset(12, 25),
+        Size = UDim2.new(1, -24, 0, 17),
+        BackgroundTransparency = 1,
+        Text = "@" .. player.Name,
+        TextColor3 = Config.Colors.Muted,
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Button)
 
-local PlayersLayout = Instance.new("UIListLayout")
-PlayersLayout.Parent = PlayersScroll
-PlayersLayout.Padding = UDim.new(0, 3)
+    Button.MouseButton1Click:Connect(function()
+        SelectedPlayer = player
 
-local function UpdatePlayerList()
-for _, child in ipairs(PlayersScroll:GetChildren()) do
-if child:IsA("TextButton") then child:Destroy() end
+        SelectedName.Text = player.DisplayName
+        SelectedStatus.Text = "@" .. player.Name
+
+        for _, child in ipairs(PlayerList:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Config.Colors.Element
+            end
+        end
+
+        Button.BackgroundColor3 = Config.Colors.AccentDark
+    end)
 end
-for _, p in ipairs(Players:GetPlayers()) do
-if p ~= LocalPlayer then
-local pBtn = Instance.new("TextButton")
-pBtn.Size = UDim2.new(1, 0, 0, 30)
-pBtn.BackgroundColor3 = (SelectedTargetName == p.Name) and Color3.fromRGB(60, 100, 150) or Color3.fromRGB(50, 50, 50)
-pBtn.Text = "  👤 " .. p.Name
-pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-pBtn.Font = Enum.Font.SourceSans
-pBtn.TextSize = 14
-pBtn.TextXAlignment = Enum.TextXAlignment.Left
-pBtn.Parent = PlayersScroll
 
-        pBtn.MouseButton1Click:Connect(function()
-            SelectedTargetName = p.Name
-            UpdatePlayerList()
+local function RefreshPlayers()
+    ClearPlayerList()
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        CreatePlayerEntry(player)
+    end
+
+    task.wait()
+
+    PlayerList.CanvasSize = UDim2.fromOffset(
+        0,
+        PlayerLayout.AbsoluteContentSize.Y + 20
+    )
+end
+
+Players.PlayerAdded:Connect(RefreshPlayers)
+Players.PlayerRemoving:Connect(function(player)
+    if SelectedPlayer == player then
+        SelectedPlayer = nil
+        SelectedName.Text = "No player selected"
+        SelectedStatus.Text = "Select a player from the list"
+    end
+
+    RefreshPlayers()
+end)
+
+RefreshPlayers()
+
+----------------------------------------------------------------
+-- SELF PAGE
+----------------------------------------------------------------
+
+local SelfPage = CreatePage("Self")
+
+local SelfLayout = New("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 48),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, SelfPage)
+
+local function SelfButton(text, callback)
+    local Button = New("TextButton", {
+        BackgroundColor3 = Config.Colors.Element,
+        Text = text,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0,
+        AutoButtonColor = false
+    }, SelfPage)
+
+    Corner(Button, 8)
+
+    Button.MouseEnter:Connect(function()
+        Tween(Button, {
+            BackgroundColor3 = Config.Colors.Accent
+        })
+    end)
+
+    Button.MouseLeave:Connect(function()
+        Tween(Button, {
+            BackgroundColor3 = Config.Colors.Element
+        })
+    end)
+
+    Button.MouseButton1Click:Connect(callback)
+
+    return Button
+end
+
+SelfButton("Respawn", function()
+    Remote:FireServer("SelfRespawn")
+end)
+
+SelfButton("Heal", function()
+    Remote:FireServer("SelfHeal")
+end)
+
+SelfButton("Full Health", function()
+    Remote:FireServer("SelfFullHealth")
+end)
+
+SelfButton("Reset Character", function()
+    Remote:FireServer("SelfReset")
+end)
+
+SelfButton("Toggle WalkSpeed", function()
+    Remote:FireServer("ToggleWalkSpeed")
+end)
+
+SelfButton("Toggle JumpPower", function()
+    Remote:FireServer("ToggleJumpPower")
+end)
+
+----------------------------------------------------------------
+-- WORLD PAGE
+----------------------------------------------------------------
+
+local WorldPage = CreatePage("World")
+
+local WorldLayout = New("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 48),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, WorldPage)
+
+local function WorldButton(text, callback)
+    local Button = New("TextButton", {
+        BackgroundColor3 = Config.Colors.Element,
+        Text = text,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0
+    }, WorldPage)
+
+    Corner(Button, 8)
+
+    Button.MouseButton1Click:Connect(callback)
+
+    return Button
+end
+
+WorldButton("Day", function()
+    Remote:FireServer("SetTime", 14)
+end)
+
+WorldButton("Night", function()
+    Remote:FireServer("SetTime", 0)
+end)
+
+WorldButton("Freeze Time", function()
+    Remote:FireServer("FreezeTime", true)
+end)
+
+WorldButton("Unfreeze Time", function()
+    Remote:FireServer("FreezeTime", false)
+end)
+
+WorldButton("Clear Weather", function()
+    Remote:FireServer("ClearWeather")
+end)
+
+WorldButton("Reset World", function()
+    Remote:FireServer("ResetWorld")
+end)
+
+----------------------------------------------------------------
+-- TOOLS PAGE
+----------------------------------------------------------------
+
+local ToolsPage = CreatePage("Tools")
+
+local ToolsLayout = New("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 48),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, ToolsPage)
+
+local tools = {
+    "Sword",
+    "Flashlight",
+    "Grapple",
+    "Medkit",
+    "Radar",
+    "Scanner",
+    "Shield",
+    "AdminTool"
+}
+
+for _, toolName in ipairs(tools) do
+    local Button = New("TextButton", {
+        BackgroundColor3 = Config.Colors.Element,
+        Text = toolName,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0
+    }, ToolsPage)
+
+    Corner(Button, 8)
+
+    Button.MouseButton1Click:Connect(function()
+        Remote:FireServer(
+            "GiveTool",
+            LocalPlayer.UserId,
+            toolName
+        )
+    end)
+end
+
+----------------------------------------------------------------
+-- MARKET PAGE
+----------------------------------------------------------------
+
+local MarketPage = CreatePage("Market")
+
+local MarketList = New("ScrollingFrame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3
+}, MarketPage)
+
+local MarketLayout = New("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 110),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, MarketList)
+
+local marketItems = {
+    {Name = "Starter Sword", Price = 100, Id = "StarterSword"},
+    {Name = "Energy Blade", Price = 500, Id = "EnergyBlade"},
+    {Name = "Gravity Tool", Price = 750, Id = "GravityTool"},
+    {Name = "Shield", Price = 1200, Id = "Shield"},
+    {Name = "Rare Tool", Price = 2500, Id = "RareTool"},
+    {Name = "Premium Item", Price = 5000, Id = "PremiumItem"},
+}
+
+for _, item in ipairs(marketItems) do
+
+    local Card = New("Frame", {
+        BackgroundColor3 = Config.Colors.Panel,
+        BorderSizePixel = 0
+    }, MarketList)
+
+    Corner(Card, 10)
+
+    New("TextLabel", {
+        Position = UDim2.fromOffset(12, 10),
+        Size = UDim2.new(1, -24, 0, 22),
+        BackgroundTransparency = 1,
+        Text = item.Name,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Card)
+
+    New("TextLabel", {
+        Position = UDim2.fromOffset(12, 36),
+        Size = UDim2.new(1, -24, 0, 18),
+        BackgroundTransparency = 1,
+        Text = tostring(item.Price),
+        TextColor3 = Config.Colors.Muted,
+        TextSize = 12,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Card)
+
+    local Buy = New("TextButton", {
+        Position = UDim2.fromOffset(12, 67),
+        Size = UDim2.new(1, -24, 0, 30),
+        BackgroundColor3 = Config.Colors.Accent,
+        Text = "Buy",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        BorderSizePixel = 0
+    }, Card)
+
+    Corner(Buy, 7)
+
+    Buy.MouseButton1Click:Connect(function()
+        -- Server MUST validate the actual item price.
+        Remote:FireServer("BuyItem", item.Id)
+    end)
+end
+
+----------------------------------------------------------------
+-- LOGS PAGE
+----------------------------------------------------------------
+
+local LogsPage = CreatePage("Logs")
+
+local Logs = New("ScrollingFrame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = Config.Colors.Panel,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3
+}, LogsPage)
+
+Corner(Logs, 10)
+
+local LogsLayout = New("UIListLayout", {
+    Padding = UDim.new(0, 4)
+}, Logs)
+
+local function AddLog(message)
+    New("TextLabel", {
+        Size = UDim2.new(1, -20, 0, 26),
+        BackgroundTransparency = 1,
+        Text = message,
+        TextColor3 = Config.Colors.Muted,
+        TextSize = 12,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Logs)
+
+    Logs.CanvasSize = UDim2.fromOffset(
+        0,
+        LogsLayout.AbsoluteContentSize.Y + 10
+    )
+end
+
+AddLog("Admin panel initialized.")
+AddLog("Ready.")
+
+----------------------------------------------------------------
+-- SETTINGS PAGE
+----------------------------------------------------------------
+
+local SettingsPage = CreatePage("Settings")
+
+local SettingsLayout = New("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 48),
+    CellPadding = UDim2.new(0, 8, 0, 8)
+}, SettingsPage)
+
+local function SettingButton(text, callback)
+    local Button = New("TextButton", {
+        BackgroundColor3 = Config.Colors.Element,
+        Text = text,
+        TextColor3 = Config.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0
+    }, SettingsPage)
+
+    Corner(Button, 8)
+
+    Button.MouseButton1Click:Connect(callback)
+
+    return Button
+end
+
+SettingButton("Refresh Players", RefreshPlayers)
+
+SettingButton("Toggle UI", function()
+    Main.Visible = not Main.Visible
+end)
+
+SettingButton("Destroy UI", function()
+    Gui:Destroy()
+end)
+
+----------------------------------------------------------------
+-- ICON-ONLY TABS
+--
+-- ASCII characters are deliberately used here so the sidebar
+-- contains no labels or emoji.
+----------------------------------------------------------------
+
+SidebarButton("P", "Players")
+SidebarButton("S", "Self")
+SidebarButton("W", "World")
+SidebarButton("T", "Tools")
+SidebarButton("M", "Market")
+SidebarButton("L", "Logs")
+SidebarButton("C", "Settings")
+
+----------------------------------------------------------------
+-- OPEN DEFAULT PAGE
+----------------------------------------------------------------
+
+ShowPage("Players")
+CurrentPage = "Players"
+
+for _, child in ipairs(Sidebar:GetChildren()) do
+    if child:IsA("TextButton") then
+        if child.Text == "P" then
+            child.BackgroundTransparency = 0
+            child.TextColor3 = Config.Colors.Text
+        end
+    end
+end
+
+----------------------------------------------------------------
+-- DRAGGING
+----------------------------------------------------------------
+
+local dragging = false
+local dragStart
+local startPosition
+
+Header.InputBegan:Connect(function(input)
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        dragging = true
+
+        dragStart = input.Position
+        startPosition = Main.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
         end)
+
     end
-end
-PlayersScroll.CanvasSize = UDim2.new(0, 0, 0, PlayersLayout.AbsoluteContentSize.Y)
-
-
-end
-
-Players.PlayerAdded:Connect(UpdatePlayerList)
-Players.PlayerRemoving:Connect(UpdatePlayerList)
-UpdatePlayerList()
-
-local RefreshBtn = Instance.new("TextButton")
-RefreshBtn.Size = UDim2.new(1, -24, 0, 36)
-RefreshBtn.Position = UDim2.new(0, 12, 0, 192)
-RefreshBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-RefreshBtn.Text = "🔄 Обновить список игроков"
-RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RefreshBtn.Font = Enum.Font.SourceSansBold
-RefreshBtn.TextSize = 14
-RefreshBtn.Parent = Page1
-RefreshBtn.MouseButton1Click:Connect(UpdatePlayerList)
-
-local ApplyPosBtn = Instance.new("TextButton")
-ApplyPosBtn.Size = UDim2.new(1, -24, 0, 40)
-ApplyPosBtn.Position = UDim2.new(0, 12, 0, 238)
-ApplyPosBtn.BackgroundColor3 = Color3.fromRGB(150, 45, 45)
-ApplyPosBtn.Text = "💥 Сместить кости выбранного игрока"
-ApplyPosBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ApplyPosBtn.Font = Enum.Font.SourceSansBold
-ApplyPosBtn.TextSize = 14
-ApplyPosBtn.Parent = Page1
-
-ApplyPosBtn.MouseButton1Click:Connect(function()
-if not SelectedTargetName then return end
-local target = Players:FindFirstChild(SelectedTargetName)
-if target and target.Character then
-local head = target.Character:FindFirstChild("Head")
-local neck = head and head:FindFirstChildOfClass("Motor6D")
-if neck then
-neck.C0 = CFrame.new(0, -1.2, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
-end
-end
 end)
 
--- STREAMING_CHUNK:Populating Tab 2 and Tab 3 contents...
-local AntiGrabActive = false
-local AntiGrabBtn = Instance.new("TextButton")
-AntiGrabBtn.Size = UDim2.new(1, -24, 0, 44)
-AntiGrabBtn.Position = UDim2.new(0, 12, 0, 15)
-AntiGrabBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-AntiGrabBtn.Text = "🛡️ Anti-Grab [ВЫКЛ]"
-AntiGrabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AntiGrabBtn.Font = Enum.Font.SourceSansBold
-AntiGrabBtn.TextSize = 15
-AntiGrabBtn.Parent = Page2
+UserInputService.InputChanged:Connect(function(input)
 
-AntiGrabBtn.MouseButton1Click:Connect(function()
-AntiGrabActive = not AntiGrabActive
-AntiGrabBtn.Text = AntiGrabActive and "🛡️ Anti-Grab [ВКЛ]" or "🛡️ Anti-Grab [ВЫКЛ]"
-AntiGrabBtn.BackgroundColor3 = AntiGrabActive and Color3.fromRGB(45, 130, 45) or Color3.fromRGB(80, 80, 80)
-end)
+    if not dragging then
+        return
+    end
 
-RunService.Stepped:Connect(function()
-if AntiGrabActive and LocalPlayer.Character then
-for _, obj in ipairs(LocalPlayer.Character:GetDescendants()) do
-if obj:IsA("Weld") or obj:IsA("WeldConstraint") or obj:IsA("RopeConstraint") or obj:IsA("TouchTransmitter") then
-if obj.Parent ~= LocalPlayer.Character then
-obj:Destroy()
-end
-end
-end
-end
-end)
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+        return
+    end
 
-local DetectorInfo = Instance.new("TextLabel")
-DetectorInfo.Size = UDim2.new(1, -24, 0, 60)
-DetectorInfo.Position = UDim2.new(0, 12, 0, 12)
-DetectorInfo.BackgroundTransparency = 1
-DetectorInfo.Text = "Система мониторинга производительности и сетевых пакетов сервера."
-DetectorInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
-DetectorInfo.Font = Enum.Font.SourceSans
-DetectorInfo.TextSize = 14
-DetectorInfo.TextWrapped = true
-DetectorInfo.TextXAlignment = Enum.TextXAlignment.Left
-DetectorInfo.Parent = Page3
+    local delta = input.Position - dragStart
 
-local DetectorStatusBox = Instance.new("TextLabel")
-DetectorStatusBox.Size = UDim2.new(1, -24, 0, 80)
-DetectorStatusBox.Position = UDim2.new(0, 12, 0, 80)
-DetectorStatusBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-DetectorStatusBox.TextColor3 = Color3.fromRGB(255, 210, 60)
-DetectorStatusBox.Text = "Статус: Сканирование..."
-DetectorStatusBox.Font = Enum.Font.SourceSansBold
-DetectorStatusBox.TextSize = 14
-DetectorStatusBox.TextWrapped = true
-DetectorStatusBox.Parent = Page3
-
-task.spawn(function()
-while true do
-task.wait(3)
-local fps = workspace:GetRealPhysicsFPS()
-DetectorStatusBox.Text = "Статус: Сервер стабилен\nТекущий FPS: " .. math.floor(fps)
-end
-end)
-
--- STREAMING_CHUNK:Populating Tab 4 and handling global keybinds...
-local InfoHelp = Instance.new("TextLabel")
-InfoHelp.Size = UDim2.new(1, -24, 0, 180)
-InfoHelp.Position = UDim2.new(0, 12, 0, 12)
-InfoHelp.BackgroundTransparency = 1
-InfoHelp.Text = "📌 ГОРЯЧИЕ КЛАВИШИ:\n\n• [F10] — Обход фиксации камеры (Принудительное 3-е лицо).\n• [Right Shift] — Скрыть / Показать главное окно.\n\nИнтерфейс работает поверх всех игровых меню."
-InfoHelp.TextColor3 = Color3.fromRGB(220, 220, 220)
-InfoHelp.Font = Enum.Font.SourceSans
-InfoHelp.TextSize = 14
-InfoHelp.TextXAlignment = Enum.TextXAlignment.Left
-InfoHelp.TextYAlignment = Enum.TextYAlignment.Top
-InfoHelp.TextWrapped = true
-InfoHelp.Parent = Page4
-
-local isThirdPerson = false
-UserInputService.InputBegan:Connect(function(input, gpe)
-if gpe then return end
-if input.KeyCode == Enum.KeyCode.F10 then
-if LocalPlayer.Character then
-isThirdPerson = not isThirdPerson
-LocalPlayer.CameraMode = Enum.CameraMode.Classic
-LocalPlayer.CameraMaxZoomDistance = isThirdPerson and 128 or 0.5
-LocalPlayer.CameraMinZoomDistance = isThirdPerson and 10 or 0.5
-end
-end
-if input.KeyCode == Enum.KeyCode.RightShift then
-MainFrame.Visible = not MainFrame.Visible
-end
+    Main.Position = UDim2.new(
+        startPosition.X.Scale,
+        startPosition.X.Offset + delta.X,
+        startPosition.Y.Scale,
+        startPosition.Y.Offset + delta.Y
+    )
 end)
