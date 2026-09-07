@@ -1,6 +1,6 @@
 --[[
     ROCKET UI
-    Single-file lightweight Roblox UI
+    Single-file lightweight Roblox UI - improved input handling
     Designed for low-end hardware.
 
     Features:
@@ -18,6 +18,9 @@
       - Minimize button
       - SafeUpdate wrapper
       - No RenderStepped loops for UI
+      - Mouse-focus manager for E menu toggle
+      - High DisplayOrder for top-layer UI
+      - Input cleanup on destroy/focus changes
 ]]
 
 ------------------------------------------------------------
@@ -26,9 +29,8 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local ContextActionService = game:GetService("ContextActionService")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -41,6 +43,9 @@ local CFG = {
     Height = 480,
 
     F10Camera = true,
+    ToggleKey = Enum.KeyCode.E,
+    CloseKey = Enum.KeyCode.F10,
+    ForceMouseOnOpen = true,
 
     Colors = {
         Background = Color3.fromRGB(12, 13, 17),
@@ -168,7 +173,9 @@ local GUI = create("ScreenGui", {
     Name = "RocketUI",
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    DisplayOrder = 1000000,
+    Enabled = true
 }, LocalPlayer.PlayerGui)
 
 ------------------------------------------------------------
@@ -269,6 +276,79 @@ local Close = create("TextButton", {
 }, Header)
 
 corner(Close, 7)
+
+------------------------------------------------------------
+-- INPUT / MOUSE MANAGER
+------------------------------------------------------------
+
+local InputState = {
+    MenuOpen = true,
+    PreviousMouseBehavior = Enum.MouseBehavior.Default,
+    PreviousMouseIcon = true,
+    InputBound = false,
+}
+
+local function setMouseForMenu(open)
+    InputState.MenuOpen = open
+
+    if not CFG.ForceMouseOnOpen then
+        return
+    end
+
+    if open then
+        InputState.PreviousMouseBehavior = UserInputService.MouseBehavior
+        InputState.PreviousMouseIcon = UserInputService.MouseIconEnabled
+
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        UserInputService.MouseIconEnabled = true
+
+        pcall(function()
+            UserInputService.ModalEnabled = true
+        end)
+    else
+        pcall(function()
+            UserInputService.ModalEnabled = false
+        end)
+
+        UserInputService.MouseIconEnabled = InputState.PreviousMouseIcon
+
+        if State.ThirdPerson then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        else
+            UserInputService.MouseBehavior = InputState.PreviousMouseBehavior
+        end
+    end
+end
+
+local function setMenuVisible(visible)
+    State.Open = visible
+    Main.Visible = visible
+    setMouseForMenu(visible)
+end
+
+local function toggleMenu()
+    setMenuVisible(not State.Open)
+end
+
+local function sinkToggle(actionName, inputState, inputObject)
+    if inputState == Enum.UserInputState.Begin then
+        toggleMenu()
+    end
+
+    return Enum.ContextActionResult.Sink
+end
+
+pcall(function()
+    ContextActionService:BindActionAtPriority(
+        "Rocket_Menu_Toggle",
+        sinkToggle,
+        false,
+        Enum.ContextActionPriority.High.Value,
+        CFG.ToggleKey
+    )
+
+    InputState.InputBound = true
+end)
 
 ------------------------------------------------------------
 -- PAGES
@@ -1181,7 +1261,7 @@ settingButton("Clear Logs", function()
 end)
 
 settingButton("Toggle UI", function()
-    Main.Visible = not Main.Visible
+    toggleMenu()
 end)
 
 settingButton("Reset Position", function()
@@ -1232,19 +1312,15 @@ end
 ------------------------------------------------------------
 
 if CFG.F10Camera then
-
     UserInputService.InputBegan:Connect(function(input, processed)
-
         if processed then
             return
         end
 
-        if input.KeyCode == Enum.KeyCode.F10 then
+        if input.KeyCode == CFG.CloseKey then
             setThirdPerson(not State.ThirdPerson)
         end
-
     end)
-
 end
 
 ------------------------------------------------------------
@@ -1256,12 +1332,16 @@ Minimize.MouseButton1Click:Connect(function()
     State.Open = not State.Open
 
     if State.Open then
-        Main.Size = UDim2.fromOffset(1, 1)
+        Main.Visible = true
+        Main.Size = UDim2.fromOffset(1, 55)
+        setMouseForMenu(true)
 
         tween(Main, {
             Size = UDim2.fromOffset(CFG.Width, CFG.Height)
         }, 0.2)
     else
+        setMouseForMenu(false)
+
         tween(Main, {
             Size = UDim2.fromOffset(CFG.Width, 55)
         }, 0.2)
@@ -1274,6 +1354,7 @@ end)
 
 Close.MouseButton1Click:Connect(function()
     GUI.Enabled = false
+    setMouseForMenu(false)
 end)
 
 ------------------------------------------------------------
@@ -1362,6 +1443,36 @@ LocalPlayer.CharacterAdded:Connect(function(character)
 
     end)
 end)
+
+------------------------------------------------------------
+-- INPUT RESTORE AFTER RESPAWN / FOCUS CHANGES
+------------------------------------------------------------
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.defer(function()
+        if State.Open then
+            setMouseForMenu(true)
+        end
+    end)
+end)
+
+pcall(function()
+    UserInputService.WindowFocused:Connect(function()
+        if State.Open then
+            setMouseForMenu(true)
+        end
+    end)
+end)
+
+GUI.Destroying:Connect(function()
+    pcall(function()
+        ContextActionService:UnbindAction("Rocket_Menu_Toggle")
+    end)
+
+    setMouseForMenu(false)
+end)
+
+setMouseForMenu(true)
 
 ------------------------------------------------------------
 -- INITIAL LOGS
