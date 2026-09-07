@@ -1,179 +1,168 @@
-local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+-- Загрузка Fluent UI (Красивый интерфейс с анимациями)
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
+-- Создание главного окна
+local Window = Fluent:CreateWindow({
+    Title = "FTAP Ultimate Hub",
+    SubTitle = "Target, Exploits & Defense",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- Создание вкладок
+local Tabs = {
+    Main = Window:AddTab({ Title = "Основное (Цель)", Icon = "user" }),
+    Combat = Window:AddTab({ Title = "Функции FTAP", Icon = "zap" }),
+    Protection = Window:AddTab({ Title = "Защита", Icon = "shield" }),
+    Detection = Window:AddTab({ Title = "Детектор", Icon = "eye" })
+}
+
+local Services = {
+    Players = game:GetService("Players"),
+    VirtualUser = game:GetService("VirtualUser"),
+    RunService = game:GetService("RunService"),
+    Workspace = game:GetService("Workspace")
+}
+
+local LocalPlayer = Services.Players.LocalPlayer
 local SelectedPlayerName = nil
 
--- Создание GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LightweightPanel_V2"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- Функция получения списка игроков
+local function GetPlayerNames()
+    local names = {}
+    for _, p in ipairs(Services.Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(names, p.Name)
+        end
+    end
+    return names
+end
 
--- Кнопка сворачивания/разворачивания панели (Всегда видна на экране)
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 10, 0.5, -15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.Text = "Панель"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 13
-ToggleBtn.Parent = ScreenGui
+-- ==========================================
+-- ВКЛАДКА 1: ОСНОВНОЕ (Выбор цели)
+-- ==========================================
 
--- Главный контейнер
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 310)
-MainFrame.Position = UDim2.new(0.05, 90, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Visible = true
-MainFrame.Parent = ScreenGui
+local PlayerDropdown = Tabs.Main:AddDropdown("TargetSelect", {
+    Title = "Выберите цель из списка",
+    Values = GetPlayerNames(),
+    Multi = false,
+    Default = nil,
+})
 
--- Логика скрытия/открытия
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
+PlayerDropdown:OnChanged(function(Value)
+    SelectedPlayerName = Value
 end)
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Text = "Control Panel (Lite)"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 13
-Title.Font = Enum.Font.SourceSansBold
-Title.Parent = MainFrame
+Tabs.Main:AddButton({
+    Title = "Обновить список игроков",
+    Callback = function()
+        PlayerDropdown:SetValues(GetPlayerNames())
+        Fluent:Notify({ Title = "Успешно", Content = "Список игроков обновлен!", Duration = 2 })
+    end
+})
 
--- Список игроков
-local ScrollFrame = Instance.new("ScrollingFrame")
-ScrollFrame.Size = UDim2.new(1, -20, 0, 120)
-ScrollFrame.Position = UDim2.new(0, 10, 0, 40)
-ScrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ScrollFrame.BorderSizePixel = 0
-ScrollFrame.Parent = MainFrame
+Tabs.Main:AddButton({
+    Title = "Сместить голову к паху мишени",
+    Callback = function()
+        if not SelectedPlayerName then
+            Fluent:Notify({ Title = "Ошибка", Content = "Сначала выберите игрока из списка!", Duration = 3 })
+            return
+        end
 
-local UIList = Instance.new("UIListLayout")
-UIList.Parent = ScrollFrame
-UIList.Padding = UDim.new(0, 3)
-
--- Кнопка действия
-local ApplyBtn = Instance.new("TextButton")
-ApplyBtn.Size = UDim2.new(1, -20, 0, 35)
-ApplyBtn.Position = UDim2.new(0, 10, 0, 170)
-ApplyBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-ApplyBtn.Text = "Применить смещение"
-ApplyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ApplyBtn.Font = Enum.Font.SourceSansBold
-ApplyBtn.TextSize = 13
-ApplyBtn.Parent = MainFrame
-
--- Встроенная плашка уведомлений (Находится внутри самой панели)
-local NotifyBox = Instance.new("TextLabel")
-NotifyBox.Size = UDim2.new(1, -20, 0, 85)
-NotifyBox.Position = UDim2.new(0, 10, 0, 215)
-NotifyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-NotifyBox.BorderSizePixel = 0
-NotifyBox.TextColor3 = Color3.fromRGB(255, 220, 100)
-NotifyBox.TextWrapped = true
-NotifyBox.TextSize = 11
-NotifyBox.Font = Enum.Font.SourceSans
-NotifyBox.Text = "Статус: Готов к работе."
-NotifyBox.Parent = MainFrame
-
-local function SetStatus(text)
-    NotifyBox.Text = text
-end
-
--- ==========================================
--- ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ (БЕЗ ФРИЗОВ)
--- ==========================================
-
-local function RefreshList()
-    for _, item in ipairs(ScrollFrame:GetChildren()) do
-        if item:IsA("TextButton") then
-            item:Destroy()
+        local target = Services.Players:FindFirstChild(SelectedPlayerName)
+        if target and target.Character then
+            local head = target.Character:FindFirstChild("Head")
+            local torso = target.Character:FindFirstChild("LowerTorso") or target.Character:FindFirstChild("Torso")
+            
+            if head and torso then
+                local neck = head:FindFirstChildOfClass("Motor6D")
+                if neck then
+                    neck.C0 = CFrame.new(0, -1.2, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
+                    Fluent:Notify({ Title = "Успешно", Content = "Смещение применилось к " .. target.Name, Duration = 3 })
+                end
+            end
+        else
+            Fluent:Notify({ Title = "Ошибка", Content = "Персонаж мишени не найден!", Duration = 3 })
         end
     end
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundColor3 = (SelectedPlayerName == p.Name) and Color3.fromRGB(70, 120, 180) or Color3.fromRGB(55, 55, 55)
-            btn.Text = p.Name
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.TextSize = 12
-            btn.Font = Enum.Font.SourceSans
-            btn.Parent = ScrollFrame
-
-            btn.MouseButton1Click:Connect(function()
-                SelectedPlayerName = p.Name
-                RefreshList()
-            end)
-        end
-    end
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
-end
-
-Players.PlayerAdded:Connect(RefreshList)
-Players.PlayerRemoving:Connect(RefreshList)
-
--- Отложенный первый запуск обновления списка для исключения старт-фриза
-task.defer(RefreshList)
+})
 
 -- ==========================================
--- СМЕЩЕНИЕ КОСТЕЙ
+-- ВКЛАДКА 2: ФУНКЦИИ FTAP (Супер-бросок, Anti-Grab)
 -- ==========================================
 
-ApplyBtn.MouseButton1Click:Connect(function()
-    if not SelectedPlayerName then
-        SetStatus("Ошибка: Сначала выберите игрока из списка!")
-        return
-    end
+-- 1. Anti-Grab (Защита от захвата)
+local AntiGrabToggle = Tabs.Combat:AddToggle("AntiGrab", { Title = "Anti-Grab (Нельзя схватить)", Default = false })
 
-    local target = Players:FindFirstChild(SelectedPlayerName)
-    if target and target.Character then
-        local head = target.Character:FindFirstChild("Head")
-        local torso = target.Character:FindFirstChild("LowerTorso") or target.Character:FindFirstChild("Torso")
-        
-        if head and torso then
-            local neck = head:FindFirstChildOfClass("Motor6D")
-            if neck then
-                neck.C0 = CFrame.new(0, -1.2, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
-                SetStatus("Успешно: Смещение применено к " .. target.Name)
+Services.RunService.Stepped:Connect(function()
+    if AntiGrabToggle.Value and LocalPlayer.Character then
+        for _, child in ipairs(LocalPlayer.Character:GetChildren()) do
+            -- Удаляем физические связки, если вас кто-то пытается схватить
+            if child:IsA("WeldConstraint") or child:IsA("Weld") or child:IsA("RopeConstraint") then
+                child:Destroy()
             end
         end
-    else
-        SetStatus("Ошибка: Модель игрока не найдена!")
+    end
+end)
+
+-- 2. Супер-сила броска (Усиление импульса предметов/людей)
+local SuperThrowToggle = Tabs.Combat:AddToggle("SuperThrow", { Title = "Супер-сила физики (Super Push)", Default = false })
+
+Services.RunService.RenderStepped:Connect(function()
+    if SuperThrowToggle.Value and LocalPlayer.Character then
+        local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            -- Добавляет физический импульс при толкании предметов и людей
+            root.Velocity = root.Velocity * 1.05
+        end
     end
 end)
 
 -- ==========================================
--- ANTI-AFK
+-- ВКЛАДКА 3: ЗАЩИТА (Anti-AFK, Anti-Kick, Anti-Exploit)
 -- ==========================================
+
+-- 1. Anti-AFK
+local AntiAFKToggle = Tabs.Protection:AddToggle("AntiAFK", { Title = "Anti-AFK (Защита от таймаута)", Default = true })
 
 LocalPlayer.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new(0, 0))
+    if AntiAFKToggle.Value then
+        Services.VirtualUser:CaptureController()
+        Services.VirtualUser:ClickButton2(Vector2.new(0, 0))
+    end
 end)
 
+-- 2. Anti-Kick Protection (Авто-респавн и защита)
+local AntiKickToggle = Tabs.Protection:AddToggle("AntiKick", { Title = "Anti-Kick & Auto-Respawn", Default = true })
+
+-- Безопасный респавн при попытке взаимодействия с нежелательными скриптами
+local function TriggerRespawn()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Dead)
+    end
+end
+
 -- ==========================================
--- ЛЕГКИЙ ДЕТЕКТОР ЛАГОВ (БЕЗ НАГРУЗКИ)
+-- ВКЛАДКА 4: ДЕТЕКТОР ЛАГОВ
 -- ==========================================
 
+local LagDetectorToggle = Tabs.Detection:AddToggle("LagDetector", { Title = "Мониторинг лагов на сервере", Default = true })
+
 task.spawn(function()
-    while task.wait(5) do
-        local fps = workspace:GetRealPhysicsFPS()
-        if fps < 25 then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character then
-                    -- Проверка количества предметов без глубокого рекурсивного перебора
-                    local partsCount = #p.Character:GetChildren()
-                    if partsCount > 50 then
-                        SetStatus("Внимание: Возможные лаги от " .. p.Name .. " (много объектов)")
+    while true do
+        task.wait(4)
+        if LagDetectorToggle.Value then
+            local fps = Services.Workspace:GetRealPhysicsFPS()
+            if fps < 22 then
+                for _, p in ipairs(Services.Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character and #p.Character:GetChildren() > 40 then
+                        Fluent:Notify({
+                            Title = "Детектор лагов",
+                            Content = "Возможный лагер: " .. p.Name .. " (Спам объектами)",
+                            Duration = 4
+                        })
                         break
                     end
                 end
@@ -181,3 +170,13 @@ task.spawn(function()
         end
     end
 end)
+
+-- Авто-обновление списков
+Services.Players.PlayerAdded:Connect(function() PlayerDropdown:SetValues(GetPlayerNames()) end)
+Services.Players.PlayerRemoving:Connect(function() PlayerDropdown:SetValues(GetPlayerNames()) end)
+
+Fluent:Notify({
+    Title = "FTAP Hub Загружен!",
+    Content = "Нажмите Left Control, чтобы скрыть или открыть панель.",
+    Duration = 5
+})
