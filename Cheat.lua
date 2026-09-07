@@ -4,18 +4,21 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
--- 1. СОЗДАНИЕ WINDOWS-ПОДОБНОГО ИНТЕРФЕЙСА
+-- 1. СОЗДАНИЕ ОКНА (С ПОЗИЦИЕЙ ПОВЕРХ ВСЕХ GUI)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "WinClassicHub"
+ScreenGui.Name = "WinClassicHub_Top"
 ScreenGui.ResetOnSpawn = false
+-- Выставляем максимальный слой, чтобы меню было поверх любых инвентарей и меню игры
+ScreenGui.DisplayOrder = 999999999
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
-MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Серый цвет
-MainFrame.BackgroundTransparency = 0.15 -- Слегка прозрачный
+MainFrame.Size = UDim2.new(0, 480, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -170)
+MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Классический серо-темный цвет
+MainFrame.BackgroundTransparency = 0.15 -- Слегка прозрачное
 MainFrame.BorderSizePixel = 2
 MainFrame.BorderColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
@@ -32,7 +35,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -10, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Ultimate Injector - Windows Edition"
+Title.Text = "Windows Control Panel [Always on Top]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -62,7 +65,7 @@ Pages.Parent = MainFrame
 
 local function CreateTab(name, isFirst)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 112, 1, 0)
+    btn.Size = UDim2.new(0, 120, 1, 0)
     btn.BackgroundColor3 = isFirst and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
     btn.Text = name
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -81,8 +84,8 @@ local function CreateTab(name, isFirst)
 end
 
 local Tab1Btn, Page1 = CreateTab("🎯 Таргет", true)
-local Tab2Btn, Page2 = CreateTab("⚔️ FE Combat", false)
-local Tab3Btn, Page3 = CreateTab("🎬 Анимации", false)
+local Tab2Btn, Page2 = CreateTab("⚔️ Функции", false)
+local Tab3Btn, Page3 = CreateTab("📦 Предметы", false)
 local Tab4Btn, Page4 = CreateTab("⚙️ Разное", false)
 
 local tabs = { {Tab1Btn, Page1}, {Tab2Btn, Page2}, {Tab3Btn, Page3}, {Tab4Btn, Page4} }
@@ -102,12 +105,12 @@ end
 -- 3. СОДЕРЖИМОЕ ВКЛАДОК
 -- ==========================================
 
--- Вкладка 1: Таргет (Список игроков)
+-- Вкладка 1: Таргет
 local TargetBox = Instance.new("TextBox")
 TargetBox.Size = UDim2.new(1, 0, 0, 30)
 TargetBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-TargetBox.PlaceholderText = "Введите часть ника игрока..."
+TargetBox.PlaceholderText = "Введите ник игрока..."
 TargetBox.Text = ""
 TargetBox.Parent = Page1
 
@@ -139,44 +142,11 @@ ApplyPosBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Вкладка 2: FE Combat (Флинг / FE Кик / Anti-Grab)
-local KickBtn = Instance.new("TextButton")
-KickBtn.Size = UDim2.new(1, 0, 0, 35)
-KickBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-KickBtn.Text = "FE Kick (Fling/Убить мишень)"
-KickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-KickBtn.Font = Enum.Font.SourceSansBold
-KickBtn.TextSize = 14
-KickBtn.Parent = Page2
-
-KickBtn.MouseButton1Click:Connect(function()
-    local target = GetPlayer(TargetBox.Text)
-    if target and target.Character and LocalPlayer.Character then
-        local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-        local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if targetRoot and myRoot then
-            local Spin = Instance.new("BodyAngularVelocity")
-            Spin.Name = "FlingSpin"
-            Spin.Parent = myRoot
-            Spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            Spin.AngularVelocity = Vector3.new(0, 99999, 0)
-            
-            local oldPos = myRoot.CFrame
-            for i = 1, 20 do
-                myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0)
-                task.wait(0.05)
-            end
-            Spin:Destroy()
-            myRoot.CFrame = oldPos
-        end
-    end
-end)
-
+-- Вкладка 2: Функции (Anti-Grab и физика)
 local AntiGrabBtn = Instance.new("TextButton")
 AntiGrabBtn.Size = UDim2.new(1, 0, 0, 35)
-AntiGrabBtn.Position = UDim2.new(0, 0, 0, 45)
 AntiGrabBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-AntiGrabBtn.Text = "Включить Anti-Grab (Нельзя схватить)"
+AntiGrabBtn.Text = "Anti-Grab [ВЫКЛ]"
 AntiGrabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AntiGrabBtn.Font = Enum.Font.SourceSansBold
 AntiGrabBtn.TextSize = 14
@@ -191,57 +161,60 @@ end)
 RunService.RenderStepped:Connect(function()
     if antiGrabActive and LocalPlayer.Character then
         for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-            if v:IsA("Weld") or v:IsA("WeldConstraint") then v:Destroy() end
+            if v:IsA("Weld") or v:IsA("WeldConstraint") or v:IsA("RopeConstraint") then v:Destroy() end
         end
     end
 end)
 
--- Вкладка 3: Анимации
-local AnimBox = Instance.new("TextBox")
-AnimBox.Size = UDim2.new(1, 0, 0, 30)
-AnimBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-AnimBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-AnimBox.PlaceholderText = "Введите ID Анимации (например: 1827491)"
-AnimBox.Text = ""
-AnimBox.Parent = Page3
+-- Вкладка 3: Предметы (Взаимодействие с инвентарем / экипировкой)
+local ItemInfo = Instance.new("TextLabel")
+ItemInfo.Size = UDim2.new(1, 0, 0, 50)
+ItemInfo.BackgroundTransparency = 1
+ItemInfo.Text = "Управление предметами в руках:\n(Скрипт проверяет активный инструмент Backpack)"
+ItemInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+ItemInfo.Font = Enum.Font.SourceSans
+ItemInfo.TextSize = 13
+ItemInfo.Parent = Page3
 
-local PlayAnimBtn = Instance.new("TextButton")
-PlayAnimBtn.Size = UDim2.new(1, 0, 0, 35)
-PlayAnimBtn.Position = UDim2.new(0, 0, 0, 40)
-PlayAnimBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-PlayAnimBtn.Text = "Воспроизвести"
-PlayAnimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayAnimBtn.Font = Enum.Font.SourceSansBold
-PlayAnimBtn.TextSize = 14
-PlayAnimBtn.Parent = Page3
+local EquipToolBtn = Instance.new("TextButton")
+EquipToolBtn.Size = UDim2.new(1, 0, 0, 35)
+EquipToolBtn.Position = UDim2.new(0, 0, 0, 60)
+EquipToolBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+EquipToolBtn.Text = "Взять первый предмет из рюкзака в руку"
+EquipToolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+EquipToolBtn.Font = Enum.Font.SourceSansBold
+EquipToolBtn.TextSize = 13
+EquipToolBtn.Parent = Page3
 
-PlayAnimBtn.MouseButton1Click:Connect(function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://" .. AnimBox.Text
-        local track = LocalPlayer.Character.Humanoid:LoadAnimation(anim)
-        track:Play()
+EquipToolBtn.MouseButton1Click:Connect(function()
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if backpack and humanoid then
+        local tool = backpack:FindFirstChildOfClass("Tool")
+        if tool then
+            humanoid:EquipTool(tool)
+        end
     end
 end)
 
--- Вкладка 4: Разное (F10 Camera info)
+-- Вкладка 4: Разное (Камера и скрытие)
 local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(1, 0, 1, 0)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Нажмите F10 для переключения 3-го лица\n(Обход принудительного 1-го лица)\n\nНажмите RIGHT SHIFT чтобы скрыть меню."
+InfoText.Text = "• Нажмите F10 для обхода вида от 3-го лица\n• Нажмите Right Shift чтобы скрыть/открыть окно\n• Окно всегда поверх остальных элементов игры"
 InfoText.TextColor3 = Color3.fromRGB(200, 200, 200)
 InfoText.Font = Enum.Font.SourceSans
-InfoText.TextSize = 14
+InfoText.TextSize = 13
 InfoText.Parent = Page4
 
 -- ==========================================
--- 4. ГЛОБАЛЬНЫЕ БИНДЫ (F10 и скрытие меню)
+-- 4. ГЛОБАЛЬНЫЕ БИНДЫ
 -- ==========================================
 local isThirdPerson = false
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     
-    -- F10: Принудительное 3 лицо (Обход фильтра камеры)
+    -- F10: Принудительное 3 лицо
     if input.KeyCode == Enum.KeyCode.F10 then
         if LocalPlayer.Character then
             isThirdPerson = not isThirdPerson
