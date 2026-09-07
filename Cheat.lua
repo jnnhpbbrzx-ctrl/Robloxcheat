@@ -1,907 +1,1389 @@
 --[[
-    ROCKET ADMIN PANEL
-    Single-file Roblox Studio admin panel
-    Place this LocalScript in StarterPlayerScripts.
+    ROCKET UI
+    Single-file lightweight Roblox UI
+    Designed for low-end hardware.
 
-    Server-side actions should be validated on the server.
+    Features:
+      - Icon sidebar
+      - Player selector
+      - Search
+      - Player information
+      - Self page
+      - Camera page
+      - Market page
+      - Settings
+      - Logs
+      - F10 third-person toggle
+      - Drag window
+      - Minimize button
+      - SafeUpdate wrapper
+      - No RenderStepped loops for UI
 ]]
 
+------------------------------------------------------------
+-- SERVICES
+------------------------------------------------------------
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- CONFIG
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Config = {
-    AdminUserIds = {
-        [123456789] = true, -- CHANGE THIS
-    },
+local CFG = {
+    Width = 760,
+    Height = 480,
 
-    Size = Vector2.new(900, 560),
+    F10Camera = true,
 
     Colors = {
-        Background = Color3.fromRGB(13, 14, 18),
-        Panel = Color3.fromRGB(18, 19, 24),
-        Panel2 = Color3.fromRGB(23, 24, 30),
-        Element = Color3.fromRGB(28, 30, 37),
+        Background = Color3.fromRGB(12, 13, 17),
+        Sidebar = Color3.fromRGB(17, 18, 23),
+        Panel = Color3.fromRGB(20, 21, 27),
+        Element = Color3.fromRGB(28, 30, 38),
+        ElementHover = Color3.fromRGB(39, 41, 52),
 
-        Text = Color3.fromRGB(235, 237, 242),
-        Muted = Color3.fromRGB(140, 144, 155),
+        Accent = Color3.fromRGB(115, 87, 255),
+        AccentDark = Color3.fromRGB(83, 62, 190),
 
-        Accent = Color3.fromRGB(126, 92, 255),
-        AccentDark = Color3.fromRGB(91, 65, 190),
+        Text = Color3.fromRGB(240, 242, 247),
+        Muted = Color3.fromRGB(145, 149, 160),
 
+        Success = Color3.fromRGB(70, 190, 125),
         Danger = Color3.fromRGB(220, 75, 85),
-        Success = Color3.fromRGB(75, 190, 125),
     }
 }
 
-----------------------------------------------------------------
--- ADMIN CHECK
-----------------------------------------------------------------
+------------------------------------------------------------
+-- STATE
+------------------------------------------------------------
 
-if not Config.AdminUserIds[LocalPlayer.UserId] then
-    return
-end
+local State = {
+    Open = true,
+    Page = "Players",
 
-----------------------------------------------------------------
--- REMOTE
-----------------------------------------------------------------
+    SelectedPlayer = nil,
 
-local Remote = ReplicatedStorage:FindFirstChild("RocketAdmin")
+    ThirdPerson = false,
+    ThirdDistance = 10,
 
-if not Remote then
-    Remote = Instance.new("RemoteEvent")
-    Remote.Name = "RocketAdmin"
-    Remote.Parent = ReplicatedStorage
-end
+    WalkSpeedEnabled = false,
+    JumpEnabled = false,
 
-----------------------------------------------------------------
+    Logs = {},
+
+    Connections = {}
+}
+
+------------------------------------------------------------
 -- HELPERS
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local function New(className, properties, parent)
-    local object = Instance.new(className)
+local function safe(fn)
+    local ok, result = pcall(fn)
 
-    for property, value in pairs(properties or {}) do
-        object[property] = value
+    if not ok then
+        warn("[ROCKET]", result)
     end
 
-    object.Parent = parent
-
-    return object
+    return ok, result
 end
 
-local function Corner(parent, radius)
-    return New("UICorner", {
+local function create(class, props, parent)
+    local obj = Instance.new(class)
+
+    for key, value in pairs(props or {}) do
+        obj[key] = value
+    end
+
+    obj.Parent = parent
+
+    return obj
+end
+
+local function corner(obj, radius)
+    create("UICorner", {
         CornerRadius = UDim.new(0, radius or 8)
-    }, parent)
+    }, obj)
 end
 
-local function Stroke(parent, color, transparency)
-    return New("UIStroke", {
-        Color = color or Config.Colors.Element,
+local function stroke(obj, color, transparency)
+    create("UIStroke", {
+        Color = color or CFG.Colors.Element,
         Transparency = transparency or 0,
         Thickness = 1
-    }, parent)
+    }, obj)
 end
 
-local function Tween(object, properties, duration)
-    local tween = TweenService:Create(
-        object,
-        TweenInfo.new(
-            duration or 0.18,
-            Enum.EasingStyle.Quart,
-            Enum.EasingDirection.Out
-        ),
-        properties
+local function tween(obj, properties, duration)
+    local ok, result = pcall(function()
+        local t = TweenService:Create(
+            obj,
+            TweenInfo.new(
+                duration or 0.15,
+                Enum.EasingStyle.Quart,
+                Enum.EasingDirection.Out
+            ),
+            properties
+        )
+
+        t:Play()
+
+        return t
+    end)
+
+    if ok then
+        return result
+    end
+end
+
+local function log(message)
+    table.insert(
+        State.Logs,
+        os.date("%H:%M:%S") .. "  " .. tostring(message)
     )
 
-    tween:Play()
-
-    return tween
+    if #State.Logs > 100 then
+        table.remove(State.Logs, 1)
+    end
 end
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- GUI
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Gui = New("ScreenGui", {
-    Name = "RocketAdmin",
+local old = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("RocketUI")
+
+if old then
+    old:Destroy()
+end
+
+local GUI = create("ScreenGui", {
+    Name = "RocketUI",
     ResetOnSpawn = false,
+    IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-}, LocalPlayer:WaitForChild("PlayerGui"))
+}, LocalPlayer.PlayerGui)
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- MAIN
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Main = New("Frame", {
-    Size = UDim2.fromOffset(Config.Size.X, Config.Size.Y),
-    Position = UDim2.new(0.5, -Config.Size.X / 2, 0.5, -Config.Size.Y / 2),
-    BackgroundColor3 = Config.Colors.Background,
+local Main = create("Frame", {
+    Name = "Main",
+    Size = UDim2.fromOffset(CFG.Width, CFG.Height),
+    Position = UDim2.new(
+        0.5,
+        -CFG.Width / 2,
+        0.5,
+        -CFG.Height / 2
+    ),
+    BackgroundColor3 = CFG.Colors.Background,
     BorderSizePixel = 0,
     ClipsDescendants = true
-}, Gui)
+}, GUI)
 
-Corner(Main, 14)
-Stroke(Main, Color3.fromRGB(45, 47, 57))
+corner(Main, 12)
+stroke(Main, Color3.fromRGB(45, 47, 58))
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- SIDEBAR
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Sidebar = New("Frame", {
-    Size = UDim2.new(0, 64, 1, 0),
-    BackgroundColor3 = Config.Colors.Panel,
+local Sidebar = create("Frame", {
+    Size = UDim2.fromOffset(58, CFG.Height),
+    BackgroundColor3 = CFG.Colors.Sidebar,
     BorderSizePixel = 0
 }, Main)
 
-local SidebarLayout = New("UIListLayout", {
-    Padding = UDim.new(0, 8),
-    HorizontalAlignment = Enum.HorizontalAlignment.Center,
-    SortOrder = Enum.SortOrder.LayoutOrder
+local SidebarLayout = create("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 7),
+    HorizontalAlignment = Enum.HorizontalAlignment.Center
 }, Sidebar)
 
-New("UIPadding", {
-    PaddingTop = UDim.new(0, 18),
-    PaddingBottom = UDim.new(0, 18)
+create("UIPadding", {
+    PaddingTop = UDim.new(0, 12)
 }, Sidebar)
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- CONTENT
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Content = New("Frame", {
-    Size = UDim2.new(1, -64, 1, 0),
-    Position = UDim2.new(0, 64, 0, 0),
+local Content = create("Frame", {
+    Position = UDim2.fromOffset(58, 0),
+    Size = UDim2.new(1, -58, 1, 0),
     BackgroundTransparency = 1
 }, Main)
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- HEADER
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local Header = New("Frame", {
-    Size = UDim2.new(1, 0, 0, 64),
+local Header = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 55),
     BackgroundTransparency = 1
 }, Content)
 
-local HeaderTitle = New("TextLabel", {
-    Position = UDim2.fromOffset(24, 17),
-    Size = UDim2.fromOffset(400, 30),
+local HeaderTitle = create("TextLabel", {
+    Position = UDim2.fromOffset(18, 13),
+    Size = UDim2.new(1, -100, 0, 30),
     BackgroundTransparency = 1,
     Text = "Players",
-    TextColor3 = Config.Colors.Text,
-    TextSize = 20,
+    TextColor3 = CFG.Colors.Text,
+    TextSize = 19,
     Font = Enum.Font.GothamBold,
     TextXAlignment = Enum.TextXAlignment.Left
 }, Header)
 
-----------------------------------------------------------------
--- CONTENT CONTAINER
-----------------------------------------------------------------
+local Minimize = create("TextButton", {
+    Position = UDim2.new(1, -72, 0, 12),
+    Size = UDim2.fromOffset(28, 28),
+    BackgroundColor3 = CFG.Colors.Element,
+    BorderSizePixel = 0,
+    Text = "−",
+    TextColor3 = CFG.Colors.Text,
+    TextSize = 18,
+    Font = Enum.Font.GothamBold,
+    AutoButtonColor = false
+}, Header)
 
-local PageContainer = New("Frame", {
-    Position = UDim2.fromOffset(18, 64),
-    Size = UDim2.new(1, -36, 1, -82),
+corner(Minimize, 7)
+
+local Close = create("TextButton", {
+    Position = UDim2.new(1, -38, 0, 12),
+    Size = UDim2.fromOffset(28, 28),
+    BackgroundColor3 = CFG.Colors.Element,
+    BorderSizePixel = 0,
+    Text = "×",
+    TextColor3 = CFG.Colors.Text,
+    TextSize = 18,
+    Font = Enum.Font.GothamBold,
+    AutoButtonColor = false
+}, Header)
+
+corner(Close, 7)
+
+------------------------------------------------------------
+-- PAGES
+------------------------------------------------------------
+
+local PageHolder = create("Frame", {
+    Position = UDim2.fromOffset(14, 55),
+    Size = UDim2.new(1, -28, 1, -69),
     BackgroundTransparency = 1
 }, Content)
 
-----------------------------------------------------------------
--- PAGES
-----------------------------------------------------------------
-
 local Pages = {}
 
-local function CreatePage(name)
-    local page = New("Frame", {
+local function page(name)
+    local p = create("Frame", {
         Name = name,
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
         Visible = false
-    }, PageContainer)
+    }, PageHolder)
 
-    Pages[name] = page
+    Pages[name] = p
 
-    return page
+    return p
 end
 
-local function ShowPage(name)
-    for pageName, page in pairs(Pages) do
-        page.Visible = pageName == name
+local function showPage(name)
+    for n, p in pairs(Pages) do
+        p.Visible = (n == name)
     end
 
+    State.Page = name
     HeaderTitle.Text = name
 end
 
-----------------------------------------------------------------
+------------------------------------------------------------
 -- SIDEBAR BUTTON
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local CurrentPage
+local SidebarButtons = {}
 
-local function SidebarButton(icon, pageName)
-    local Button = New("TextButton", {
-        Size = UDim2.fromOffset(42, 42),
-        BackgroundColor3 = Config.Colors.Element,
+local function tab(icon, name, order)
+    local b = create("TextButton", {
+        Size = UDim2.fromOffset(38, 38),
+        BackgroundColor3 = CFG.Colors.Element,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
+
         Text = icon,
-        TextColor3 = Config.Colors.Muted,
-        TextSize = 18,
+        TextColor3 = CFG.Colors.Muted,
+        TextSize = 15,
         Font = Enum.Font.GothamBold,
+
         AutoButtonColor = false,
-        LayoutOrder = #Sidebar:GetChildren()
+        LayoutOrder = order
     }, Sidebar)
 
-    Corner(Button, 9)
+    corner(b, 8)
 
-    Button.MouseEnter:Connect(function()
-        if CurrentPage ~= pageName then
-            Tween(Button, {
+    SidebarButtons[name] = b
+
+    b.MouseEnter:Connect(function()
+        if State.Page ~= name then
+            tween(b, {
                 BackgroundTransparency = 0,
-                TextColor3 = Config.Colors.Text
+                BackgroundColor3 = CFG.Colors.ElementHover,
+                TextColor3 = CFG.Colors.Text
             })
         end
     end)
 
-    Button.MouseLeave:Connect(function()
-        if CurrentPage ~= pageName then
-            Tween(Button, {
+    b.MouseLeave:Connect(function()
+        if State.Page ~= name then
+            tween(b, {
                 BackgroundTransparency = 1,
-                TextColor3 = Config.Colors.Muted
+                TextColor3 = CFG.Colors.Muted
             })
         end
     end)
 
-    Button.MouseButton1Click:Connect(function()
+    b.MouseButton1Click:Connect(function()
+        showPage(name)
 
-        CurrentPage = pageName
-
-        for _, child in ipairs(Sidebar:GetChildren()) do
-            if child:IsA("TextButton") then
-                Tween(child, {
-                    BackgroundTransparency = child == Button and 0 or 1,
-                    TextColor3 = child == Button
-                        and Config.Colors.Text
-                        or Config.Colors.Muted
+        for tabName, button in pairs(SidebarButtons) do
+            if tabName == name then
+                tween(button, {
+                    BackgroundTransparency = 0,
+                    BackgroundColor3 = CFG.Colors.Accent,
+                    TextColor3 = CFG.Colors.Text
+                })
+            else
+                tween(button, {
+                    BackgroundTransparency = 1,
+                    TextColor3 = CFG.Colors.Muted
                 })
             end
         end
-
-        ShowPage(pageName)
     end)
 
-    return Button
+    return b
 end
 
-----------------------------------------------------------------
--- PLAYERS PAGE
-----------------------------------------------------------------
+------------------------------------------------------------
+-- PLAYER PAGE
+------------------------------------------------------------
 
-local PlayersPage = CreatePage("Players")
+local PlayerPage = page("Players")
 
-local PlayerList = New("ScrollingFrame", {
-    Size = UDim2.new(0.42, -8, 1, 0),
-    BackgroundColor3 = Config.Colors.Panel,
-    BorderSizePixel = 0,
-    ScrollBarThickness = 3,
-    ScrollBarImageColor3 = Config.Colors.Accent,
-    CanvasSize = UDim2.new()
-}, PlayersPage)
-
-Corner(PlayerList, 10)
-
-local PlayerLayout = New("UIListLayout", {
-    Padding = UDim.new(0, 6),
-    SortOrder = Enum.SortOrder.LayoutOrder
-}, PlayerList)
-
-New("UIPadding", {
-    PaddingTop = UDim.new(0, 10),
-    PaddingBottom = UDim.new(0, 10),
-    PaddingLeft = UDim.new(0, 10),
-    PaddingRight = UDim.new(0, 10)
-}, PlayerList)
-
-local SelectedPlayer = nil
-
-local Details = New("Frame", {
-    Position = UDim2.new(0.42, 8, 0, 0),
-    Size = UDim2.new(0.58, -8, 1, 0),
-    BackgroundColor3 = Config.Colors.Panel,
+local Left = create("Frame", {
+    Size = UDim2.new(0.40, -6, 1, 0),
+    BackgroundColor3 = CFG.Colors.Panel,
     BorderSizePixel = 0
-}, PlayersPage)
+}, PlayerPage)
 
-Corner(Details, 10)
+corner(Left, 9)
 
-local SelectedName = New("TextLabel", {
+local Search = create("TextBox", {
+    Position = UDim2.fromOffset(10, 10),
+    Size = UDim2.new(1, -20, 0, 34),
+
+    BackgroundColor3 = CFG.Colors.Element,
+    BorderSizePixel = 0,
+
+    PlaceholderText = "Search",
+    PlaceholderColor3 = CFG.Colors.Muted,
+
+    Text = "",
+    TextColor3 = CFG.Colors.Text,
+    TextSize = 12,
+    Font = Enum.Font.Gotham,
+
+    ClearTextOnFocus = false
+}, Left)
+
+corner(Search, 7)
+
+local PlayerScroll = create("ScrollingFrame", {
+    Position = UDim2.fromOffset(10, 52),
+    Size = UDim2.new(1, -20, 1, -62),
+
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+
+    ScrollBarThickness = 2,
+    ScrollBarImageColor3 = CFG.Colors.Accent,
+
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+
+    AutomaticCanvasSize = Enum.AutomaticSize.Y
+}, Left)
+
+local PlayerLayout = create("UIListLayout", {
+    Padding = UDim.new(0, 5),
+    SortOrder = Enum.SortOrder.LayoutOrder
+}, PlayerScroll)
+
+------------------------------------------------------------
+-- PLAYER DETAILS
+------------------------------------------------------------
+
+local Right = create("Frame", {
+    Position = UDim2.new(0.40, 6, 0, 0),
+    Size = UDim2.new(0.60, -6, 1, 0),
+    BackgroundColor3 = CFG.Colors.Panel,
+    BorderSizePixel = 0
+}, PlayerPage)
+
+corner(Right, 9)
+
+local PlayerTitle = create("TextLabel", {
     Position = UDim2.fromOffset(18, 16),
-    Size = UDim2.new(1, -36, 0, 30),
+    Size = UDim2.new(1, -36, 0, 25),
+
     BackgroundTransparency = 1,
+
     Text = "No player selected",
-    TextColor3 = Config.Colors.Text,
-    TextSize = 18,
+    TextColor3 = CFG.Colors.Text,
+    TextSize = 17,
     Font = Enum.Font.GothamBold,
+
     TextXAlignment = Enum.TextXAlignment.Left
-}, Details)
+}, Right)
 
-local SelectedStatus = New("TextLabel", {
-    Position = UDim2.fromOffset(18, 48),
-    Size = UDim2.new(1, -36, 0, 22),
+local PlayerSubtitle = create("TextLabel", {
+    Position = UDim2.fromOffset(18, 42),
+    Size = UDim2.new(1, -36, 0, 20),
+
     BackgroundTransparency = 1,
-    Text = "Select a player from the list",
-    TextColor3 = Config.Colors.Muted,
-    TextSize = 13,
-    Font = Enum.Font.Gotham
-}, Details)
 
-local Actions = New("Frame", {
-    Position = UDim2.fromOffset(18, 88),
-    Size = UDim2.new(1, -36, 1, -106),
+    Text = "",
+    TextColor3 = CFG.Colors.Muted,
+    TextSize = 11,
+    Font = Enum.Font.Gotham,
+
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Right)
+
+local ActionGrid = create("Frame", {
+    Position = UDim2.fromOffset(18, 82),
+    Size = UDim2.new(1, -36, 1, -100),
+
     BackgroundTransparency = 1
-}, Details)
+}, Right)
 
-New("UIGridLayout", {
-    CellSize = UDim2.new(0.48, 0, 0, 42),
-    CellPadding = UDim2.new(0, 8, 0, 8)
-}, Actions)
+create("UIGridLayout", {
+    CellSize = UDim2.new(0.48, 0, 0, 40),
+    CellPadding = UDim2.fromOffset(7, 7)
+}, ActionGrid)
 
-local function ActionButton(text, callback, danger)
-    local Button = New("TextButton", {
+------------------------------------------------------------
+-- LOCAL ACTION BUTTON
+------------------------------------------------------------
+
+local function actionButton(text, callback, danger)
+
+    local b = create("TextButton", {
         BackgroundColor3 = danger
-            and Config.Colors.Danger
-            or Config.Colors.Element,
+            and CFG.Colors.Danger
+            or CFG.Colors.Element,
 
         Text = text,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 12,
         Font = Enum.Font.GothamMedium,
-        AutoButtonColor = false,
-        BorderSizePixel = 0
-    }, Actions)
 
-    Corner(Button, 8)
+        BorderSizePixel = 0,
+        AutoButtonColor = false
+    }, ActionGrid)
 
-    Button.MouseEnter:Connect(function()
-        Tween(Button, {
-            BackgroundColor3 = danger
+    corner(b, 7)
+
+    b.MouseEnter:Connect(function()
+        tween(b, {
+            BackgroundColor3 =
+                danger
                 and Color3.fromRGB(240, 85, 95)
-                or Config.Colors.Accent
+                or CFG.Colors.ElementHover
         })
     end)
 
-    Button.MouseLeave:Connect(function()
-        Tween(Button, {
-            BackgroundColor3 = danger
-                and Config.Colors.Danger
-                or Config.Colors.Element
+    b.MouseLeave:Connect(function()
+        tween(b, {
+            BackgroundColor3 =
+                danger
+                and CFG.Colors.Danger
+                or CFG.Colors.Element
         })
     end)
 
-    Button.MouseButton1Click:Connect(function()
-        if SelectedPlayer then
-            callback(SelectedPlayer)
+    b.MouseButton1Click:Connect(function()
+        if State.SelectedPlayer then
+            safe(function()
+                callback(State.SelectedPlayer)
+            end)
         end
     end)
 
-    return Button
+    return b
 end
 
-ActionButton("Reset", function(target)
-    Remote:FireServer("Reset", target.UserId)
+------------------------------------------------------------
+-- PLAYER ACTIONS
+------------------------------------------------------------
+
+actionButton("Reset", function(player)
+    log("Reset requested: " .. player.Name)
+
+    -- Hook your own server-side admin RemoteEvent here.
 end)
 
-ActionButton("Bring", function(target)
-    Remote:FireServer("Bring", target.UserId)
+actionButton("Bring", function(player)
+    log("Bring requested: " .. player.Name)
 end)
 
-ActionButton("Teleport", function(target)
-    Remote:FireServer("Teleport", target.UserId)
+actionButton("Teleport", function(player)
+
+    local myCharacter = LocalPlayer.Character
+    local targetCharacter = player.Character
+
+    if not myCharacter or not targetCharacter then
+        return
+    end
+
+    local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+    local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+
+    if myRoot and targetRoot then
+        myRoot.CFrame = targetRoot.CFrame * CFrame.new(3, 0, 0)
+        log("Teleported to " .. player.Name)
+    end
 end)
 
-ActionButton("Freeze", function(target)
-    Remote:FireServer("Freeze", target.UserId, true)
+actionButton("Freeze", function(player)
+    log("Freeze requested: " .. player.Name)
 end)
 
-ActionButton("Unfreeze", function(target)
-    Remote:FireServer("Freeze", target.UserId, false)
+actionButton("Unfreeze", function(player)
+    log("Unfreeze requested: " .. player.Name)
 end)
 
-ActionButton("Kill", function(target)
-    Remote:FireServer("Kill", target.UserId)
-end, true)
-
-ActionButton("Respawn", function(target)
-    Remote:FireServer("Respawn", target.UserId)
+actionButton("Respawn", function(player)
+    log("Respawn requested: " .. player.Name)
 end)
 
-ActionButton("Spectate", function(target)
-    Remote:FireServer("Spectate", target.UserId)
+actionButton("Spectate", function(player)
+
+    local camera = workspace.CurrentCamera
+    local character = player.Character
+
+    if not character then
+        return
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        camera.CameraSubject = humanoid
+        log("Spectating " .. player.Name)
+    end
 end)
 
-----------------------------------------------------------------
+actionButton("Reset Camera", function()
+
+    local character = LocalPlayer.Character
+
+    if not character then
+        return
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        workspace.CurrentCamera.CameraSubject = humanoid
+    end
+end)
+
+------------------------------------------------------------
 -- PLAYER LIST
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local function ClearPlayerList()
-    for _, child in ipairs(PlayerList:GetChildren()) do
+local function clearPlayerEntries()
+
+    for _, child in ipairs(PlayerScroll:GetChildren()) do
         if child:IsA("TextButton") then
             child:Destroy()
         end
     end
 end
 
-local function CreatePlayerEntry(player)
-    local Button = New("TextButton", {
-        Size = UDim2.new(1, 0, 0, 48),
-        BackgroundColor3 = Config.Colors.Element,
+local function addPlayerEntry(player)
+
+    local query = string.lower(Search.Text)
+
+    if query ~= "" then
+
+        local nameMatch =
+            string.find(string.lower(player.Name), query, 1, true)
+
+        local displayMatch =
+            string.find(string.lower(player.DisplayName), query, 1, true)
+
+        if not nameMatch and not displayMatch then
+            return
+        end
+    end
+
+    local b = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 44),
+
+        BackgroundColor3 = CFG.Colors.Element,
+        BorderSizePixel = 0,
+
         Text = "",
-        AutoButtonColor = false,
-        BorderSizePixel = 0
-    }, PlayerList)
+        AutoButtonColor = false
+    }, PlayerScroll)
 
-    Corner(Button, 8)
+    corner(b, 7)
 
-    local Name = New("TextLabel", {
-        Position = UDim2.fromOffset(12, 6),
-        Size = UDim2.new(1, -24, 0, 19),
+    local name = create("TextLabel", {
+        Position = UDim2.fromOffset(10, 5),
+        Size = UDim2.new(1, -20, 0, 18),
+
         BackgroundTransparency = 1,
+
         Text = player.DisplayName,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 12,
         Font = Enum.Font.GothamMedium,
-        TextXAlignment = Enum.TextXAlignment.Left
-    }, Button)
 
-    local Username = New("TextLabel", {
-        Position = UDim2.fromOffset(12, 25),
-        Size = UDim2.new(1, -24, 0, 17),
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, b)
+
+    local username = create("TextLabel", {
+        Position = UDim2.fromOffset(10, 23),
+        Size = UDim2.new(1, -20, 0, 15),
+
         BackgroundTransparency = 1,
+
         Text = "@" .. player.Name,
-        TextColor3 = Config.Colors.Muted,
-        TextSize = 11,
+        TextColor3 = CFG.Colors.Muted,
+        TextSize = 10,
         Font = Enum.Font.Gotham,
+
         TextXAlignment = Enum.TextXAlignment.Left
-    }, Button)
+    }, b)
 
-    Button.MouseButton1Click:Connect(function()
-        SelectedPlayer = player
+    b.MouseEnter:Connect(function()
+        if State.SelectedPlayer ~= player then
+            tween(b, {
+                BackgroundColor3 = CFG.Colors.ElementHover
+            })
+        end
+    end)
 
-        SelectedName.Text = player.DisplayName
-        SelectedStatus.Text = "@" .. player.Name
+    b.MouseLeave:Connect(function()
+        if State.SelectedPlayer ~= player then
+            tween(b, {
+                BackgroundColor3 = CFG.Colors.Element
+            })
+        end
+    end)
 
-        for _, child in ipairs(PlayerList:GetChildren()) do
+    b.MouseButton1Click:Connect(function()
+
+        State.SelectedPlayer = player
+
+        PlayerTitle.Text = player.DisplayName
+        PlayerSubtitle.Text =
+            "@" .. player.Name ..
+            "  •  UserId " ..
+            tostring(player.UserId)
+
+        for _, child in ipairs(PlayerScroll:GetChildren()) do
             if child:IsA("TextButton") then
-                child.BackgroundColor3 = Config.Colors.Element
+                child.BackgroundColor3 = CFG.Colors.Element
             end
         end
 
-        Button.BackgroundColor3 = Config.Colors.AccentDark
+        b.BackgroundColor3 = CFG.Colors.AccentDark
+
+        log("Selected " .. player.Name)
     end)
 end
 
-local function RefreshPlayers()
-    ClearPlayerList()
+local function refreshPlayers()
+
+    clearPlayerEntries()
 
     for _, player in ipairs(Players:GetPlayers()) do
-        CreatePlayerEntry(player)
+        addPlayerEntry(player)
     end
-
-    task.wait()
-
-    PlayerList.CanvasSize = UDim2.fromOffset(
-        0,
-        PlayerLayout.AbsoluteContentSize.Y + 20
-    )
 end
 
-Players.PlayerAdded:Connect(RefreshPlayers)
-Players.PlayerRemoving:Connect(function(player)
-    if SelectedPlayer == player then
-        SelectedPlayer = nil
-        SelectedName.Text = "No player selected"
-        SelectedStatus.Text = "Select a player from the list"
-    end
+Search:GetPropertyChangedSignal("Text"):Connect(refreshPlayers)
 
-    RefreshPlayers()
+Players.PlayerAdded:Connect(function()
+    task.defer(refreshPlayers)
 end)
 
-RefreshPlayers()
+Players.PlayerRemoving:Connect(function(player)
 
-----------------------------------------------------------------
+    if State.SelectedPlayer == player then
+        State.SelectedPlayer = nil
+        PlayerTitle.Text = "No player selected"
+        PlayerSubtitle.Text = ""
+    end
+
+    task.defer(refreshPlayers)
+end)
+
+refreshPlayers()
+
+------------------------------------------------------------
 -- SELF PAGE
-----------------------------------------------------------------
+------------------------------------------------------------
 
-local SelfPage = CreatePage("Self")
+local SelfPage = page("Self")
 
-local SelfLayout = New("UIGridLayout", {
-    CellSize = UDim2.new(0.31, 0, 0, 48),
-    CellPadding = UDim2.new(0, 8, 0, 8)
+local SelfGrid = create("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1
 }, SelfPage)
 
-local function SelfButton(text, callback)
-    local Button = New("TextButton", {
-        BackgroundColor3 = Config.Colors.Element,
-        Text = text,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
-        Font = Enum.Font.GothamMedium,
+create("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 44),
+    CellPadding = UDim2.fromOffset(8, 8)
+}, SelfGrid)
+
+local function selfButton(text, callback)
+
+    local b = create("TextButton", {
+        BackgroundColor3 = CFG.Colors.Element,
         BorderSizePixel = 0,
-        AutoButtonColor = false
-    }, SelfPage)
 
-    Corner(Button, 8)
-
-    Button.MouseEnter:Connect(function()
-        Tween(Button, {
-            BackgroundColor3 = Config.Colors.Accent
-        })
-    end)
-
-    Button.MouseLeave:Connect(function()
-        Tween(Button, {
-            BackgroundColor3 = Config.Colors.Element
-        })
-    end)
-
-    Button.MouseButton1Click:Connect(callback)
-
-    return Button
-end
-
-SelfButton("Respawn", function()
-    Remote:FireServer("SelfRespawn")
-end)
-
-SelfButton("Heal", function()
-    Remote:FireServer("SelfHeal")
-end)
-
-SelfButton("Full Health", function()
-    Remote:FireServer("SelfFullHealth")
-end)
-
-SelfButton("Reset Character", function()
-    Remote:FireServer("SelfReset")
-end)
-
-SelfButton("Toggle WalkSpeed", function()
-    Remote:FireServer("ToggleWalkSpeed")
-end)
-
-SelfButton("Toggle JumpPower", function()
-    Remote:FireServer("ToggleJumpPower")
-end)
-
-----------------------------------------------------------------
--- WORLD PAGE
-----------------------------------------------------------------
-
-local WorldPage = CreatePage("World")
-
-local WorldLayout = New("UIGridLayout", {
-    CellSize = UDim2.new(0.31, 0, 0, 48),
-    CellPadding = UDim2.new(0, 8, 0, 8)
-}, WorldPage)
-
-local function WorldButton(text, callback)
-    local Button = New("TextButton", {
-        BackgroundColor3 = Config.Colors.Element,
         Text = text,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 12,
         Font = Enum.Font.GothamMedium,
-        BorderSizePixel = 0
-    }, WorldPage)
 
-    Corner(Button, 8)
+        AutoButtonColor = false
+    }, SelfGrid)
 
-    Button.MouseButton1Click:Connect(callback)
+    corner(b, 7)
 
-    return Button
+    b.MouseEnter:Connect(function()
+        tween(b, {
+            BackgroundColor3 = CFG.Colors.ElementHover
+        })
+    end)
+
+    b.MouseLeave:Connect(function()
+        tween(b, {
+            BackgroundColor3 = CFG.Colors.Element
+        })
+    end)
+
+    b.MouseButton1Click:Connect(function()
+        safe(callback)
+    end)
+
+    return b
 end
 
-WorldButton("Day", function()
-    Remote:FireServer("SetTime", 14)
+selfButton("Heal", function()
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    if hum then
+        hum.Health = hum.MaxHealth
+        log("Heal")
+    end
 end)
 
-WorldButton("Night", function()
-    Remote:FireServer("SetTime", 0)
+selfButton("Respawn", function()
+    LocalPlayer:LoadCharacter()
+    log("Respawn")
 end)
 
-WorldButton("Freeze Time", function()
-    Remote:FireServer("FreezeTime", true)
+selfButton("Reset Camera", function()
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if hum then
+        workspace.CurrentCamera.CameraSubject = hum
+    end
 end)
 
-WorldButton("Unfreeze Time", function()
-    Remote:FireServer("FreezeTime", false)
+selfButton("WalkSpeed", function()
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if not hum then
+        return
+    end
+
+    State.WalkSpeedEnabled = not State.WalkSpeedEnabled
+
+    hum.WalkSpeed =
+        State.WalkSpeedEnabled
+        and 24
+        or 16
+
+    log("WalkSpeed = " .. tostring(hum.WalkSpeed))
 end)
 
-WorldButton("Clear Weather", function()
-    Remote:FireServer("ClearWeather")
+selfButton("JumpPower", function()
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if not hum then
+        return
+    end
+
+    State.JumpEnabled = not State.JumpEnabled
+
+    hum.UseJumpPower = true
+
+    hum.JumpPower =
+        State.JumpEnabled
+        and 70
+        or 50
+
+    log("JumpPower = " .. tostring(hum.JumpPower))
 end)
 
-WorldButton("Reset World", function()
-    Remote:FireServer("ResetWorld")
+------------------------------------------------------------
+-- CAMERA PAGE
+------------------------------------------------------------
+
+local CameraPage = page("Camera")
+
+local CameraGrid = create("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1
+}, CameraPage)
+
+create("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 44),
+    CellPadding = UDim2.fromOffset(8, 8)
+}, CameraGrid)
+
+local function cameraButton(text, callback)
+
+    local b = create("TextButton", {
+        BackgroundColor3 = CFG.Colors.Element,
+        BorderSizePixel = 0,
+
+        Text = text,
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 12,
+        Font = Enum.Font.GothamMedium
+    }, CameraGrid)
+
+    corner(b, 7)
+
+    b.MouseButton1Click:Connect(function()
+        safe(callback)
+    end)
+
+    return b
+end
+
+local function setThirdPerson(enabled)
+
+    local camera = workspace.CurrentCamera
+
+    State.ThirdPerson = enabled
+
+    if enabled then
+
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+        camera.CameraType = Enum.CameraType.Custom
+
+        LocalPlayer.CameraMinZoomDistance = 5
+        LocalPlayer.CameraMaxZoomDistance = State.ThirdDistance
+
+        log("Third person enabled")
+
+    else
+
+        LocalPlayer.CameraMinZoomDistance = 0.5
+        LocalPlayer.CameraMaxZoomDistance = 12
+
+        log("Third person disabled")
+    end
+end
+
+cameraButton("Third Person", function()
+    setThirdPerson(not State.ThirdPerson)
 end)
 
-----------------------------------------------------------------
--- TOOLS PAGE
-----------------------------------------------------------------
+cameraButton("Distance +", function()
 
-local ToolsPage = CreatePage("Tools")
+    State.ThirdDistance = math.clamp(
+        State.ThirdDistance + 2,
+        5,
+        30
+    )
 
-local ToolsLayout = New("UIGridLayout", {
-    CellSize = UDim2.new(0.31, 0, 0, 48),
-    CellPadding = UDim2.new(0, 8, 0, 8)
-}, ToolsPage)
+    LocalPlayer.CameraMaxZoomDistance = State.ThirdDistance
 
-local tools = {
-    "Sword",
-    "Flashlight",
-    "Grapple",
-    "Medkit",
-    "Radar",
-    "Scanner",
-    "Shield",
-    "AdminTool"
+    log("Camera distance = " .. State.ThirdDistance)
+end)
+
+cameraButton("Distance −", function()
+
+    State.ThirdDistance = math.clamp(
+        State.ThirdDistance - 2,
+        5,
+        30
+    )
+
+    LocalPlayer.CameraMaxZoomDistance = State.ThirdDistance
+
+    log("Camera distance = " .. State.ThirdDistance)
+end)
+
+cameraButton("Lock Camera", function()
+
+    local camera = workspace.CurrentCamera
+
+    camera.CameraType =
+        camera.CameraType == Enum.CameraType.Scriptable
+        and Enum.CameraType.Custom
+        or Enum.CameraType.Scriptable
+
+    log("Camera mode changed")
+end)
+
+cameraButton("Default Camera", function()
+
+    workspace.CurrentCamera.CameraType =
+        Enum.CameraType.Custom
+
+    LocalPlayer.CameraMinZoomDistance = 0.5
+    LocalPlayer.CameraMaxZoomDistance = 12
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if hum then
+        workspace.CurrentCamera.CameraSubject = hum
+    end
+
+    State.ThirdPerson = false
+
+    log("Camera reset")
+end)
+
+------------------------------------------------------------
+-- MARKET PAGE
+------------------------------------------------------------
+
+local MarketPage = page("Market")
+
+local Market = create("ScrollingFrame", {
+    Size = UDim2.fromScale(1, 1),
+
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+
+    ScrollBarThickness = 2,
+
+    AutomaticCanvasSize = Enum.AutomaticSize.Y
+}, MarketPage)
+
+create("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 102),
+    CellPadding = UDim2.fromOffset(8, 8)
+}, Market)
+
+local Items = {
+    {"Starter", 100},
+    {"Blade", 500},
+    {"Shield", 750},
+    {"Scanner", 900},
+    {"Grapple", 1250},
+    {"Rare", 2500},
+    {"Epic", 5000},
+    {"Legendary", 10000},
+    {"Premium", 25000},
 }
 
-for _, toolName in ipairs(tools) do
-    local Button = New("TextButton", {
-        BackgroundColor3 = Config.Colors.Element,
-        Text = toolName,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
-        Font = Enum.Font.GothamMedium,
+for _, item in ipairs(Items) do
+
+    local card = create("Frame", {
+        BackgroundColor3 = CFG.Colors.Panel,
         BorderSizePixel = 0
-    }, ToolsPage)
+    }, Market)
 
-    Corner(Button, 8)
+    corner(card, 8)
 
-    Button.MouseButton1Click:Connect(function()
-        Remote:FireServer(
-            "GiveTool",
-            LocalPlayer.UserId,
-            toolName
+    create("TextLabel", {
+        Position = UDim2.fromOffset(11, 9),
+        Size = UDim2.new(1, -22, 0, 20),
+
+        BackgroundTransparency = 1,
+
+        Text = item[1],
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamBold,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, card)
+
+    create("TextLabel", {
+        Position = UDim2.fromOffset(11, 31),
+        Size = UDim2.new(1, -22, 0, 18),
+
+        BackgroundTransparency = 1,
+
+        Text = tostring(item[2]),
+        TextColor3 = CFG.Colors.Muted,
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, card)
+
+    local buy = create("TextButton", {
+        Position = UDim2.fromOffset(10, 62),
+        Size = UDim2.new(1, -20, 0, 29),
+
+        BackgroundColor3 = CFG.Colors.Accent,
+        BorderSizePixel = 0,
+
+        Text = "Buy",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+
+        AutoButtonColor = false
+    }, card)
+
+    corner(buy, 6)
+
+    buy.MouseEnter:Connect(function()
+        tween(buy, {
+            BackgroundColor3 = CFG.Colors.AccentDark
+        })
+    end)
+
+    buy.MouseLeave:Connect(function()
+        tween(buy, {
+            BackgroundColor3 = CFG.Colors.Accent
+        })
+    end)
+
+    buy.MouseButton1Click:Connect(function()
+        log("Purchased request: " .. item[1])
+    end)
+end
+
+------------------------------------------------------------
+-- LOGS PAGE
+------------------------------------------------------------
+
+local LogsPage = page("Logs")
+
+local LogScroll = create("ScrollingFrame", {
+    Size = UDim2.fromScale(1, 1),
+
+    BackgroundColor3 = CFG.Colors.Panel,
+    BorderSizePixel = 0,
+
+    ScrollBarThickness = 2,
+
+    AutomaticCanvasSize = Enum.AutomaticSize.Y
+}, LogsPage)
+
+corner(LogScroll, 8)
+
+local LogLayout = create("UIListLayout", {
+    Padding = UDim.new(0, 2)
+}, LogScroll)
+
+local function rebuildLogs()
+
+    for _, child in ipairs(LogScroll:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for _, text in ipairs(State.Logs) do
+
+        create("TextLabel", {
+            Size = UDim2.new(1, -20, 0, 24),
+
+            BackgroundTransparency = 1,
+
+            Text = text,
+            TextColor3 = CFG.Colors.Muted,
+            TextSize = 11,
+            Font = Enum.Font.Code,
+
+            TextXAlignment = Enum.TextXAlignment.Left
+        }, LogScroll)
+    end
+end
+
+------------------------------------------------------------
+-- SETTINGS
+------------------------------------------------------------
+
+local SettingsPage = page("Settings")
+
+local SettingsGrid = create("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1
+}, SettingsPage)
+
+create("UIGridLayout", {
+    CellSize = UDim2.new(0.31, 0, 0, 44),
+    CellPadding = UDim2.fromOffset(8, 8)
+}, SettingsGrid)
+
+local function settingButton(text, callback)
+
+    local b = create("TextButton", {
+        BackgroundColor3 = CFG.Colors.Element,
+        BorderSizePixel = 0,
+
+        Text = text,
+        TextColor3 = CFG.Colors.Text,
+        TextSize = 12,
+        Font = Enum.Font.GothamMedium
+    }, SettingsGrid)
+
+    corner(b, 7)
+
+    b.MouseButton1Click:Connect(function()
+        safe(callback)
+    end)
+end
+
+settingButton("Refresh Players", refreshPlayers)
+
+settingButton("Clear Logs", function()
+
+    table.clear(State.Logs)
+    rebuildLogs()
+end)
+
+settingButton("Toggle UI", function()
+    Main.Visible = not Main.Visible
+end)
+
+settingButton("Reset Position", function()
+
+    Main.Position = UDim2.new(
+        0.5,
+        -CFG.Width / 2,
+        0.5,
+        -CFG.Height / 2
+    )
+end)
+
+settingButton("Destroy", function()
+    GUI:Destroy()
+end)
+
+------------------------------------------------------------
+-- TABS
+------------------------------------------------------------
+
+tab("P", "Players", 1)
+tab("S", "Self", 2)
+tab("C", "Camera", 3)
+tab("M", "Market", 4)
+tab("L", "Logs", 5)
+tab("G", "Settings", 6)
+
+showPage("Players")
+
+for name, button in pairs(SidebarButtons) do
+
+    if name == "Players" then
+
+        button.BackgroundTransparency = 0
+        button.BackgroundColor3 = CFG.Colors.Accent
+        button.TextColor3 = CFG.Colors.Text
+
+    else
+
+        button.BackgroundTransparency = 1
+        button.TextColor3 = CFG.Colors.Muted
+
+    end
+end
+
+------------------------------------------------------------
+-- F10 CAMERA TOGGLE
+------------------------------------------------------------
+
+if CFG.F10Camera then
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+
+        if processed then
+            return
+        end
+
+        if input.KeyCode == Enum.KeyCode.F10 then
+            setThirdPerson(not State.ThirdPerson)
+        end
+
+    end)
+
+end
+
+------------------------------------------------------------
+-- MINIMIZE
+------------------------------------------------------------
+
+Minimize.MouseButton1Click:Connect(function()
+
+    State.Open = not State.Open
+
+    if State.Open then
+        Main.Size = UDim2.fromOffset(1, 1)
+
+        tween(Main, {
+            Size = UDim2.fromOffset(CFG.Width, CFG.Height)
+        }, 0.2)
+    else
+        tween(Main, {
+            Size = UDim2.fromOffset(CFG.Width, 55)
+        }, 0.2)
+    end
+end)
+
+------------------------------------------------------------
+-- CLOSE
+------------------------------------------------------------
+
+Close.MouseButton1Click:Connect(function()
+    GUI.Enabled = false
+end)
+
+------------------------------------------------------------
+-- DRAG WINDOW
+------------------------------------------------------------
+
+do
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    Header.InputBegan:Connect(function(input)
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseButton1 then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = Main.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState ==
+                    Enum.UserInputState.End then
+
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType ~=
+            Enum.UserInputType.MouseMovement then
+            return
+        end
+
+        local delta =
+            input.Position - dragStart
+
+        Main.Position = UDim2.new(
+            startPosition.X.Scale,
+            startPosition.X.Offset + delta.X,
+
+            startPosition.Y.Scale,
+            startPosition.Y.Offset + delta.Y
         )
     end)
 end
 
-----------------------------------------------------------------
--- MARKET PAGE
-----------------------------------------------------------------
+------------------------------------------------------------
+-- CHARACTER RESPAWN SUPPORT
+------------------------------------------------------------
 
-local MarketPage = CreatePage("Market")
+LocalPlayer.CharacterAdded:Connect(function(character)
 
-local MarketList = New("ScrollingFrame", {
-    Size = UDim2.fromScale(1, 1),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    ScrollBarThickness = 3
-}, MarketPage)
+    task.defer(function()
 
-local MarketLayout = New("UIGridLayout", {
-    CellSize = UDim2.new(0.31, 0, 0, 110),
-    CellPadding = UDim2.new(0, 8, 0, 8)
-}, MarketList)
+        local humanoid =
+            character:WaitForChild("Humanoid", 8)
 
-local marketItems = {
-    {Name = "Starter Sword", Price = 100, Id = "StarterSword"},
-    {Name = "Energy Blade", Price = 500, Id = "EnergyBlade"},
-    {Name = "Gravity Tool", Price = 750, Id = "GravityTool"},
-    {Name = "Shield", Price = 1200, Id = "Shield"},
-    {Name = "Rare Tool", Price = 2500, Id = "RareTool"},
-    {Name = "Premium Item", Price = 5000, Id = "PremiumItem"},
-}
-
-for _, item in ipairs(marketItems) do
-
-    local Card = New("Frame", {
-        BackgroundColor3 = Config.Colors.Panel,
-        BorderSizePixel = 0
-    }, MarketList)
-
-    Corner(Card, 10)
-
-    New("TextLabel", {
-        Position = UDim2.fromOffset(12, 10),
-        Size = UDim2.new(1, -24, 0, 22),
-        BackgroundTransparency = 1,
-        Text = item.Name,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
-        TextXAlignment = Enum.TextXAlignment.Left
-    }, Card)
-
-    New("TextLabel", {
-        Position = UDim2.fromOffset(12, 36),
-        Size = UDim2.new(1, -24, 0, 18),
-        BackgroundTransparency = 1,
-        Text = tostring(item.Price),
-        TextColor3 = Config.Colors.Muted,
-        TextSize = 12,
-        Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Left
-    }, Card)
-
-    local Buy = New("TextButton", {
-        Position = UDim2.fromOffset(12, 67),
-        Size = UDim2.new(1, -24, 0, 30),
-        BackgroundColor3 = Config.Colors.Accent,
-        Text = "Buy",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        BorderSizePixel = 0
-    }, Card)
-
-    Corner(Buy, 7)
-
-    Buy.MouseButton1Click:Connect(function()
-        -- Server MUST validate the actual item price.
-        Remote:FireServer("BuyItem", item.Id)
-    end)
-end
-
-----------------------------------------------------------------
--- LOGS PAGE
-----------------------------------------------------------------
-
-local LogsPage = CreatePage("Logs")
-
-local Logs = New("ScrollingFrame", {
-    Size = UDim2.fromScale(1, 1),
-    BackgroundColor3 = Config.Colors.Panel,
-    BorderSizePixel = 0,
-    ScrollBarThickness = 3
-}, LogsPage)
-
-Corner(Logs, 10)
-
-local LogsLayout = New("UIListLayout", {
-    Padding = UDim.new(0, 4)
-}, Logs)
-
-local function AddLog(message)
-    New("TextLabel", {
-        Size = UDim2.new(1, -20, 0, 26),
-        BackgroundTransparency = 1,
-        Text = message,
-        TextColor3 = Config.Colors.Muted,
-        TextSize = 12,
-        Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Left
-    }, Logs)
-
-    Logs.CanvasSize = UDim2.fromOffset(
-        0,
-        LogsLayout.AbsoluteContentSize.Y + 10
-    )
-end
-
-AddLog("Admin panel initialized.")
-AddLog("Ready.")
-
-----------------------------------------------------------------
--- SETTINGS PAGE
-----------------------------------------------------------------
-
-local SettingsPage = CreatePage("Settings")
-
-local SettingsLayout = New("UIGridLayout", {
-    CellSize = UDim2.new(0.31, 0, 0, 48),
-    CellPadding = UDim2.new(0, 8, 0, 8)
-}, SettingsPage)
-
-local function SettingButton(text, callback)
-    local Button = New("TextButton", {
-        BackgroundColor3 = Config.Colors.Element,
-        Text = text,
-        TextColor3 = Config.Colors.Text,
-        TextSize = 13,
-        Font = Enum.Font.GothamMedium,
-        BorderSizePixel = 0
-    }, SettingsPage)
-
-    Corner(Button, 8)
-
-    Button.MouseButton1Click:Connect(callback)
-
-    return Button
-end
-
-SettingButton("Refresh Players", RefreshPlayers)
-
-SettingButton("Toggle UI", function()
-    Main.Visible = not Main.Visible
-end)
-
-SettingButton("Destroy UI", function()
-    Gui:Destroy()
-end)
-
-----------------------------------------------------------------
--- ICON-ONLY TABS
---
--- ASCII characters are deliberately used here so the sidebar
--- contains no labels or emoji.
-----------------------------------------------------------------
-
-SidebarButton("P", "Players")
-SidebarButton("S", "Self")
-SidebarButton("W", "World")
-SidebarButton("T", "Tools")
-SidebarButton("M", "Market")
-SidebarButton("L", "Logs")
-SidebarButton("C", "Settings")
-
-----------------------------------------------------------------
--- OPEN DEFAULT PAGE
-----------------------------------------------------------------
-
-ShowPage("Players")
-CurrentPage = "Players"
-
-for _, child in ipairs(Sidebar:GetChildren()) do
-    if child:IsA("TextButton") then
-        if child.Text == "P" then
-            child.BackgroundTransparency = 0
-            child.TextColor3 = Config.Colors.Text
+        if not humanoid then
+            return
         end
-    end
-end
 
-----------------------------------------------------------------
--- DRAGGING
-----------------------------------------------------------------
+        if State.WalkSpeedEnabled then
+            humanoid.WalkSpeed = 24
+        end
 
-local dragging = false
-local dragStart
-local startPosition
+        if State.JumpEnabled then
+            humanoid.UseJumpPower = true
+            humanoid.JumpPower = 70
+        end
 
-Header.InputBegan:Connect(function(input)
+        if State.ThirdPerson then
+            LocalPlayer.CameraMinZoomDistance = 5
+            LocalPlayer.CameraMaxZoomDistance =
+                State.ThirdDistance
+        end
 
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-
-        dragging = true
-
-        dragStart = input.Position
-        startPosition = Main.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-
-    end
+    end)
 end)
 
-UserInputService.InputChanged:Connect(function(input)
+------------------------------------------------------------
+-- INITIAL LOGS
+------------------------------------------------------------
 
-    if not dragging then
-        return
+log("Rocket UI initialized")
+log("Player list loaded")
+log("F10 camera toggle ready")
+
+------------------------------------------------------------
+-- LOG REFRESH
+------------------------------------------------------------
+
+task.spawn(function()
+
+    while GUI.Parent do
+
+        task.wait(1)
+
+        if State.Page == "Logs" then
+            rebuildLogs()
+        end
+
     end
-
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement then
-        return
-    end
-
-    local delta = input.Position - dragStart
-
-    Main.Position = UDim2.new(
-        startPosition.X.Scale,
-        startPosition.X.Offset + delta.X,
-        startPosition.Y.Scale,
-        startPosition.Y.Offset + delta.Y
-    )
 end)
