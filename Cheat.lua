@@ -1,7 +1,3 @@
--- ==========================================
--- ЛЕГКИЙ ИНТЕРФЕЙС БЕЗ ВНЕШНИХ БИБЛИОТЕК
--- ==========================================
-
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
@@ -9,25 +5,43 @@ local LocalPlayer = Players.LocalPlayer
 
 local SelectedPlayerName = nil
 
--- Создание компактного UI
+-- Создание GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LightweightPanel"
+ScreenGui.Name = "LightweightPanel_V2"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Кнопка сворачивания/разворачивания панели (Всегда видна на экране)
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 10, 0.5, -15)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleBtn.Text = "Панель"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 13
+ToggleBtn.Parent = ScreenGui
+
+-- Главный контейнер
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 240, 0, 260)
-MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 260, 0, 310)
+MainFrame.Position = UDim2.new(0.05, 90, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
+
+-- Логика скрытия/открытия
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Text = "Panel (Lite Mode)"
+Title.Text = "Control Panel (Lite)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.SourceSansBold
@@ -48,7 +62,7 @@ UIList.Padding = UDim.new(0, 3)
 -- Кнопка действия
 local ApplyBtn = Instance.new("TextButton")
 ApplyBtn.Size = UDim2.new(1, -20, 0, 35)
-ApplyBtn.Position = UDim2.new(0, 10, 1, -55)
+ApplyBtn.Position = UDim2.new(0, 10, 0, 170)
 ApplyBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
 ApplyBtn.Text = "Применить смещение"
 ApplyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -56,35 +70,25 @@ ApplyBtn.Font = Enum.Font.SourceSansBold
 ApplyBtn.TextSize = 13
 ApplyBtn.Parent = MainFrame
 
--- Окно уведомлений (выходит сбоку)
-local NotifyFrame = Instance.new("Frame")
-NotifyFrame.Size = UDim2.new(0, 220, 0, 50)
-NotifyFrame.Position = UDim2.new(1, 10, 0, 0)
-NotifyFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-NotifyFrame.BorderSizePixel = 0
-NotifyFrame.Visible = false
-NotifyFrame.Parent = MainFrame
+-- Встроенная плашка уведомлений (Находится внутри самой панели)
+local NotifyBox = Instance.new("TextLabel")
+NotifyBox.Size = UDim2.new(1, -20, 0, 85)
+NotifyBox.Position = UDim2.new(0, 10, 0, 215)
+NotifyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+NotifyBox.BorderSizePixel = 0
+NotifyBox.TextColor3 = Color3.fromRGB(255, 220, 100)
+NotifyBox.TextWrapped = true
+NotifyBox.TextSize = 11
+NotifyBox.Font = Enum.Font.SourceSans
+NotifyBox.Text = "Статус: Готов к работе."
+NotifyBox.Parent = MainFrame
 
-local NotifyText = Instance.new("TextLabel")
-NotifyText.Size = UDim2.new(1, -10, 1, 0)
-NotifyText.Position = UDim2.new(0, 5, 0, 0)
-NotifyText.BackgroundTransparency = 1
-NotifyText.TextColor3 = Color3.fromRGB(255, 220, 100)
-NotifyText.TextWrapped = true
-NotifyText.TextSize = 12
-NotifyText.Font = Enum.Font.SourceSans
-NotifyText.Parent = NotifyFrame
-
-local function ShowNotify(text)
-    NotifyText.Text = text
-    NotifyFrame.Visible = true
-    task.delay(4, function()
-        NotifyFrame.Visible = false
-    end)
+local function SetStatus(text)
+    NotifyBox.Text = text
 end
 
 -- ==========================================
--- ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ
+-- ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ (БЕЗ ФРИЗОВ)
 -- ==========================================
 
 local function RefreshList()
@@ -116,7 +120,9 @@ end
 
 Players.PlayerAdded:Connect(RefreshList)
 Players.PlayerRemoving:Connect(RefreshList)
-RefreshList()
+
+-- Отложенный первый запуск обновления списка для исключения старт-фриза
+task.defer(RefreshList)
 
 -- ==========================================
 -- СМЕЩЕНИЕ КОСТЕЙ
@@ -124,7 +130,7 @@ RefreshList()
 
 ApplyBtn.MouseButton1Click:Connect(function()
     if not SelectedPlayerName then
-        ShowNotify("Сначала выберите игрока из списка!")
+        SetStatus("Ошибка: Сначала выберите игрока из списка!")
         return
     end
 
@@ -137,14 +143,16 @@ ApplyBtn.MouseButton1Click:Connect(function()
             local neck = head:FindFirstChildOfClass("Motor6D")
             if neck then
                 neck.C0 = CFrame.new(0, -1.2, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
-                ShowNotify("Смещение применено к " .. target.Name)
+                SetStatus("Успешно: Смещение применено к " .. target.Name)
             end
         end
+    else
+        SetStatus("Ошибка: Модель игрока не найдена!")
     end
 end)
 
 -- ==========================================
--- БЕЗОПАСНЫЙ ANTI-AFK (БЕЗ НАГРУЗКИ)
+-- ANTI-AFK
 -- ==========================================
 
 LocalPlayer.Idled:Connect(function()
@@ -153,29 +161,19 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 -- ==========================================
--- ДЕТЕКТОР ЛАГОВ И СПАМА
+-- ЛЕГКИЙ ДЕТЕКТОР ЛАГОВ (БЕЗ НАГРУЗКИ)
 -- ==========================================
 
-local lastCheck = tick()
-local frameCount = 0
-
-RunService.Heartbeat:Connect(function()
-    frameCount = frameCount + 1
-    local now = tick()
-    
-    -- Проверка раз в 3 секунды
-    if now - lastCheck >= 3 then
-        local fps = frameCount / (now - lastCheck)
-        frameCount = 0
-        lastCheck = now
-
-        -- Если FPS падает ниже 20, ищем подозрительного игрока
-        if fps < 20 then
+task.spawn(function()
+    while task.wait(5) do
+        local fps = workspace:GetRealPhysicsFPS()
+        if fps < 25 then
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= LocalPlayer and p.Character then
-                    -- Если у игрока слишком много элементов в модели (спам частями/инструментами)
-                    if #p.Character:GetDescendants() > 150 then
-                        ShowNotify("Возможные лаги от: " .. p.Name .. " (Спам объектами)")
+                    -- Проверка количества предметов без глубокого рекурсивного перебора
+                    local partsCount = #p.Character:GetChildren()
+                    if partsCount > 50 then
+                        SetStatus("Внимание: Возможные лаги от " .. p.Name .. " (много объектов)")
                         break
                     end
                 end
