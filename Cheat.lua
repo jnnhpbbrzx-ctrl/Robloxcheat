@@ -20,7 +20,7 @@ local Tabs = {
 local Services = {
     Players = game:GetService("Players"),
     VirtualUser = game:GetService("VirtualUser"),
-    RunService = game:GetService("RunService")
+    Stats = game:GetService("Stats")
 }
 
 local LocalPlayer = Services.Players.LocalPlayer
@@ -37,7 +37,6 @@ _G.MonitorLag = false
 -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 -- ==========================================
 
--- Получение списка имен всех игроков, кроме себя
 local function GetPlayerNames()
     local names = {}
     for _, player in ipairs(Services.Players:GetPlayers()) do
@@ -48,7 +47,6 @@ local function GetPlayerNames()
     return names
 end
 
--- Функция принудительного респавна персонажа
 local function TriggerRespawn()
     if LocalPlayer.Character then
         local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -60,7 +58,7 @@ local function TriggerRespawn()
 end
 
 -- ==========================================
--- ВКЛАДКА: ОСНОВНОЕ (Выбор цели и таргетинг)
+-- ВКЛАДКА: ОСНОВНОЕ
 -- ==========================================
 
 local PlayerDropdown = Tabs.Main:AddDropdown("TargetSelect", {
@@ -102,7 +100,6 @@ Tabs.Main:AddButton({
         if head and torso then
             local neck = head:FindFirstChildOfClass("Motor6D")
             if neck then
-                -- Локальное смещение кости головы к области паха/торса
                 neck.C0 = CFrame.new(0, -1.2, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
                 Fluent:Notify({ Title = "Успешно", Content = "Смещение применилось к " .. targetPlayer.Name, Duration = 3 })
             else
@@ -115,10 +112,9 @@ Tabs.Main:AddButton({
 })
 
 -- ==========================================
--- ВКЛАДКА: ЗАЩИТА (Anti-AFK, Anti-Kick, Anti-Exploit)
+-- ВКЛАДКА: ЗАЩИТА
 -- ==========================================
 
--- 1. Anti-AFK
 local AntiAFKToggle = Tabs.Protection:AddToggle("AntiAFK", { Title = "Anti-AFK Protection", Default = true })
 AntiAFKToggle:OnChanged(function(Value)
     _G.AntiAFKEnabled = Value
@@ -131,7 +127,6 @@ LocalPlayer.Idled:Connect(function()
     end
 end)
 
--- 2. Anti-Kick + Auto-Respawn
 local AntiKickToggle = Tabs.Protection:AddToggle("AntiKick", { Title = "Anti-Kick (Client Intercept)", Default = true })
 AntiKickToggle:OnChanged(function(Value)
     _G.AntiKickEnabled = Value
@@ -172,17 +167,16 @@ if hookmetamethod then
     end)
 end
 
--- 3. Anti-Exploit Guard (Защита от стороннего захвата/взрывов персонажа)
+-- Безопасная очистка вредоносных объектов в персонаже
 local ExploitGuardToggle = Tabs.Protection:AddToggle("ExploitGuard", { Title = "Anti-Exploit / Structure Protection", Default = true })
 ExploitGuardToggle:OnChanged(function(Value)
     _G.ExploitGuardEnabled = Value
 end)
 
 task.spawn(function()
-    while task.wait(2) do
+    while task.wait(5) do
         if _G.ExploitGuardEnabled and LocalPlayer.Character then
-            for _, child in ipairs(LocalPlayer.Character:GetDescendants()) do
-                -- Удаление сторонних нежелательных физ-объектов, которые могут вызывать взрывы или фриз
+            for _, child in ipairs(LocalPlayer.Character:GetChildren()) do
                 if child:IsA("BodyVelocity") or child:IsA("BodyThrust") or child:IsA("RocketPropulsion") then
                     child:Destroy()
                 end
@@ -192,34 +186,34 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- ВКЛАДКА: ДЕТЕКТОР (Мониторинг лагов)
+-- ВКЛАДКА: ДЕТЕКТОР
 -- ==========================================
 
-local LagDetectorToggle = Tabs.Detection:AddToggle("LagDetector", { Title = "Мониторинг пинга игроков", Default = false })
+local LagDetectorToggle = Tabs.Detection:AddToggle("LagDetector", { Title = "Мониторинг общего пинга", Default = false })
 LagDetectorToggle:OnChanged(function(Value)
     _G.MonitorLag = Value
     
     task.spawn(function()
         while _G.MonitorLag do
-            for _, player in ipairs(Services.Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    local ping = player:GetNetworkPing() * 2000
-                    if ping > 500 then
-                        Fluent:Notify({
-                            Title = "Высокий пинг",
-                            Content = player.Name .. " (@" .. player.DisplayName .. "): " .. math.floor(ping) .. " ms",
-                            Duration = 3
-                        })
-                    end
-                end
+            local pingValue = 0
+            pcall(function()
+                pingValue = math.floor(Services.Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+            
+            if pingValue > 300 then
+                Fluent:Notify({
+                    Title = "Высокий пинг сервера",
+                    Content = "Текущий зафиксированный пинг: " .. pingValue .. " ms",
+                    Duration = 3
+                })
             end
-            task.wait(6)
+            task.wait(10)
         end
     end)
 end)
 
 -- ==========================================
--- АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ
+-- АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ
 -- ==========================================
 
 Services.Players.PlayerAdded:Connect(function()
@@ -233,9 +227,8 @@ Services.Players.PlayerRemoving:Connect(function(player)
     PlayerDropdown:SetValues(GetPlayerNames())
 end)
 
--- Готово
 Fluent:Notify({
-    Title = "Скрипт полностью инициализирован",
-    Content = "Все системы защиты и функционал загружены.",
+    Title = "Скрипт успешно запущен",
+    Content = "Исправленная версия готова к работе.",
     Duration = 4
 })
